@@ -13,7 +13,7 @@ impl Store {
         }
         let conn = Connection::open(path).map_err(|e| ToolError::Store(e.to_string()))?;
         // A negative cache_size tells SQLite that the value is in kibibytes.
-        conn.pragma_update(None, "cache_size", -page_cache_kib)
+        conn.pragma_update(None, "cache_size", -page_cache_kib.min(2048))
             .map_err(|e| ToolError::Store(e.to_string()))?;
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS cache (
@@ -177,6 +177,25 @@ mod tests {
                 .as_nanos(),
         ));
         Store::open(&path, 2048).unwrap()
+    }
+
+    #[test]
+    fn open_caps_page_cache_at_two_mibibytes() {
+        let path = std::env::temp_dir().join(format!(
+            "yt-store-cache-cap-{}-{}.db",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+        ));
+        let store = Store::open(&path, 4096).unwrap();
+
+        let cache_size: i64 = store
+            .conn
+            .pragma_query_value(None, "cache_size", |row| row.get(0))
+            .unwrap();
+        assert_eq!(cache_size, -2048);
     }
 
     #[test]
