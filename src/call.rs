@@ -4,6 +4,7 @@ use crate::store::Store;
 use crate::youtube::{cache_key, ttl_seconds, CallRequest, Method, YoutubeHttp};
 use serde_json::{json, Value};
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute(
     store: &Store,
     http: &impl YoutubeHttp,
