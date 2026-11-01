@@ -4,7 +4,7 @@ Unofficial, not affiliated with Google or YouTube.
 
 Read-only YouTube Data API v3 tools for an MCP harness. Stdio transport. API key only.
 
-Optional experimental tool: `youtube_transcript` (undocumented caption path; can break; not Data API).
+Optional experimental tool: `youtube_transcript` (off by default; set `ENABLE_MCP_TRANSCRIPT=1`).
 
 ## Run
 
@@ -29,7 +29,8 @@ Set `YOUTUBE_API_KEY`. Optional:
 | `YOUTUBE_NON_SEARCH_BUDGET` | 10000 | Daily non-search budget |
 | `YT_RUST_MCP_CACHE_DIR` | OS cache dir | Where the SQLite cache and quota counters live |
 | `YT_RUST_MCP_CONFIG` | `config/default.toml` | Config file. Startup fails if unreadable |
-| `YT_RUST_MCP_PROMPTS` | `prompts` | Directory holding `server.md`. Startup fails if missing |
+| `YT_RUST_MCP_PROMPTS` | `prompts` | Directory holding `server.yaml`. Startup fails if missing |
+| `ENABLE_MCP_TRANSCRIPT` | off | Set `1`/`true` to register experimental `youtube_transcript` |
 | `RUST_LOG` | `warn` | Opt-in debug: `yt_rust_mcp=debug` (stderr; no secrets/bodies) |
 
 The two path defaults are relative to the process's working directory. Run from

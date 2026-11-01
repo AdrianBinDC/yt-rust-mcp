@@ -1,6 +1,7 @@
 pub mod call;
 pub mod config;
 pub mod error;
+pub mod prompts;
 pub mod server;
 pub mod store;
 pub mod transcript;

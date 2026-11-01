@@ -28,7 +28,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = Store::open(&config.db_path, config.sqlite_page_cache_kib)?;
     let instructions = config.load_instructions()?;
     let http = build_http(api_key).await?;
-    let transcript_http = build_transcript_http().await?;
+    let transcript_http = if config.enable_transcript {
+        Some(build_transcript_http().await?)
+    } else {
+        None
+    };
     let server = YoutubeServer::new(config, store, http, transcript_http, instructions);
     let running = server.serve(rmcp::transport::stdio()).await?;
     running.waiting().await?;
