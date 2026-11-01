@@ -13,6 +13,11 @@ pub enum ConfigError {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("parse server.yaml {path}: {source}")]
+    PromptYaml {
+        path: PathBuf,
+        source: serde_yaml::Error,
+    },
     #[error("bad integer in {name}: {value}")]
     BadInt { name: &'static str, value: String },
 }
@@ -39,6 +44,8 @@ pub struct Config {
     pub cache_dir: PathBuf,
     pub db_path: PathBuf,
     pub prompts_dir: PathBuf,
+    /// Experimental transcript tool. Off unless `ENABLE_MCP_TRANSCRIPT` is `1`/`true`.
+    pub enable_transcript: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,10 +61,13 @@ struct FileConfig {
 }
 
 impl Config {
-    /// Server instructions shown to the model. Missing file is a startup error.
+    /// Build server instructions from `prompts/server.yaml` for the current flag.
     pub fn load_instructions(&self) -> Result<String, ConfigError> {
-        let path = self.prompts_dir.join("server.md");
-        std::fs::read_to_string(&path).map_err(|source| ConfigError::Instructions { path, source })
+        let prompt = crate::prompts::load_server_prompt(&self.prompts_dir)?;
+        Ok(crate::prompts::build_instructions(
+            &prompt,
+            self.enable_transcript,
+        ))
     }
 
     pub fn load(config_path: &Path) -> Result<Self, ConfigError> {
@@ -85,6 +95,7 @@ impl Config {
             db_path: cache_dir.join("yt-rust-mcp.db"),
             cache_dir,
             prompts_dir,
+            enable_transcript: env_flag("ENABLE_MCP_TRANSCRIPT"),
         })
     }
 }
@@ -95,6 +106,14 @@ fn env_i64(name: &'static str, default: i64) -> Result<i64, ConfigError> {
             .parse()
             .map_err(|_| ConfigError::BadInt { name, value }),
         Err(_) => Ok(default),
+    }
+}
+
+/// True only for `1` or `true` (ASCII case-insensitive). Unset/other → false.
+fn env_flag(name: &str) -> bool {
+    match std::env::var(name) {
+        Ok(value) => matches!(value.to_ascii_lowercase().as_str(), "1" | "true"),
+        Err(_) => false,
     }
 }
 
@@ -128,8 +147,21 @@ mod tests {
         assert_eq!(cfg.ttl_seconds.transcript, 86400);
         assert_eq!(cfg.ttl_seconds.search, 3600);
         assert_eq!(cfg.db_path, dir.join("cache").join("yt-rust-mcp.db"));
+        assert!(!cfg.enable_transcript);
         std::env::remove_var("YOUTUBE_SEARCH_BUDGET");
         std::env::remove_var("YT_RUST_MCP_CACHE_DIR");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn enable_transcript_flag_is_off_unless_one_or_true() {
+        assert!(!env_flag("ENABLE_MCP_TRANSCRIPT_TEST_UNSET"));
+        std::env::set_var("ENABLE_MCP_TRANSCRIPT_TEST", "0");
+        assert!(!env_flag("ENABLE_MCP_TRANSCRIPT_TEST"));
+        std::env::set_var("ENABLE_MCP_TRANSCRIPT_TEST", "true");
+        assert!(env_flag("ENABLE_MCP_TRANSCRIPT_TEST"));
+        std::env::set_var("ENABLE_MCP_TRANSCRIPT_TEST", "1");
+        assert!(env_flag("ENABLE_MCP_TRANSCRIPT_TEST"));
+        std::env::remove_var("ENABLE_MCP_TRANSCRIPT_TEST");
     }
 }

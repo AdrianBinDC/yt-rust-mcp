@@ -6,6 +6,7 @@ use crate::transcript::execute::{execute as transcript_execute, ReqwestTranscrip
 use crate::youtube::{prepare, Method, ReqwestYoutube};
 use jiff::tz::TimeZone;
 use jiff::Zoned;
+use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
 use rmcp::{tool, tool_handler, tool_router, ServerHandler};
@@ -25,8 +26,9 @@ pub struct YoutubeServer {
     config: Config,
     store: std::sync::Arc<Mutex<Store>>,
     http: std::sync::Arc<ReqwestYoutube>,
-    transcript_http: std::sync::Arc<ReqwestTranscript>,
+    transcript_http: Option<std::sync::Arc<ReqwestTranscript>>,
     instructions: String,
+    tool_router: ToolRouter<Self>,
 }
 
 impl YoutubeServer {
@@ -34,15 +36,20 @@ impl YoutubeServer {
         config: Config,
         store: Store,
         http: ReqwestYoutube,
-        transcript_http: ReqwestTranscript,
+        transcript_http: Option<ReqwestTranscript>,
         instructions: String,
     ) -> Self {
+        let mut tool_router = Self::data_api_router();
+        if config.enable_transcript {
+            tool_router += Self::transcript_router();
+        }
         Self {
             config,
             store: std::sync::Arc::new(Mutex::new(store)),
             http: std::sync::Arc::new(http),
-            transcript_http: std::sync::Arc::new(transcript_http),
+            transcript_http: transcript_http.map(std::sync::Arc::new),
             instructions,
+            tool_router,
         }
     }
 
@@ -83,9 +90,12 @@ impl YoutubeServer {
             .store
             .lock()
             .map_err(|e| ToolError::Store(e.to_string()))?;
+        let http = self.transcript_http.as_ref().ok_or_else(|| {
+            ToolError::Store("transcript tool is disabled (ENABLE_MCP_TRANSCRIPT)".into())
+        })?;
         transcript_execute(
             &store,
-            self.transcript_http.as_ref(),
+            http.as_ref(),
             &video_id,
             lang.as_deref(),
             format.as_deref(),
@@ -307,7 +317,7 @@ fn prepare_transcript(
     ))
 }
 
-#[tool_router]
+#[tool_router(router = data_api_router)]
 impl YoutubeServer {
     #[tool(
         name = "youtube_search",
@@ -363,7 +373,10 @@ impl YoutubeServer {
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         self.finish(Method::PlaylistItems, to_args(&args)?).await
     }
+}
 
+#[tool_router(router = transcript_router)]
+impl YoutubeServer {
     #[tool(
         name = "youtube_transcript",
         description = "Experimental: public Show transcript text or an SRT/VTT caption file. Unofficial and undocumented — not a Data API method; can break. Do not use for discovery or captions.download. Quota: 1 local transcript fetch; a cached repeat costs 0."
@@ -376,7 +389,7 @@ impl YoutubeServer {
     }
 }
 
-#[tool_handler(name = "yt-rust-mcp", version = "0.1.0")]
+#[tool_handler(name = "yt-rust-mcp", version = "0.1.0", router = self.tool_router)]
 impl ServerHandler for YoutubeServer {
     fn get_info(&self) -> ServerConfig {
         let mut config = ServerConfig::new(ServerCapabilities::builder().enable_tools().build());
@@ -485,10 +498,11 @@ mod tests {
         assert!(prompt.contains("Quota"));
         assert!(prompt.contains("unofficial"));
         assert!(prompt.contains("experimental"));
-        let server = include_str!("../prompts/server.md");
-        assert!(server.contains("youtube_transcript"));
-        assert!(server.contains("experimental"));
-        assert!(server.contains("not affiliated"));
+        let yaml = include_str!("../prompts/server.yaml");
+        assert!(yaml.contains("youtube_transcript"));
+        assert!(yaml.contains("experimental"));
+        assert!(yaml.contains("not affiliated"));
+        assert!(yaml.contains("ENABLE_MCP_TRANSCRIPT"));
     }
 
     #[test]
@@ -504,13 +518,24 @@ mod tests {
 
     #[test]
     fn prompts_name_the_rules() {
-        let server = include_str!("../prompts/server.md");
-        assert!(server.contains("Read-only"));
-        assert!(server.contains("API key"));
-        assert!(server.contains("youtube_search"));
+        let yaml = include_str!("../prompts/server.yaml");
+        assert!(yaml.contains("Read-only"));
+        assert!(yaml.contains("API key"));
+        assert!(yaml.contains("youtube_search"));
         let search = include_str!("../prompts/tools/youtube_search.md");
         assert!(search.contains("When to use"));
         assert!(search.contains("When not to use"));
         assert!(search.contains("Quota"));
+    }
+
+    #[test]
+    fn data_api_router_omits_transcript_until_composed() {
+        let data = YoutubeServer::data_api_router();
+        let names: Vec<_> = data.list_all().into_iter().map(|t| t.name.to_string()).collect();
+        assert_eq!(names.len(), 5, "{names:?}");
+        assert!(!names.iter().any(|n| n == "youtube_transcript"));
+        let both = data + YoutubeServer::transcript_router();
+        let names: Vec<_> = both.list_all().into_iter().map(|t| t.name.to_string()).collect();
+        assert!(names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
     }
 }

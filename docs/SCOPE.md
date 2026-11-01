@@ -22,7 +22,7 @@ Auth: query parameter `key` from env **`YOUTUBE_API_KEY`**.
 
 If a tool argument requires OAuth or content-owner credentials (`mine`, `forMine`, `myRating`, `mySubscribers`, `managedByMe`, `forContentOwner`, `forDeveloper`, `onBehalfOfContentOwner`, `onBehalfOfContentOwnerChannel`), **refuse** the call. Do not strip the argument and continue.
 
-The v1 tools are the catalog methods with `"v1_status": "in_scope"`. Entries marked `"deferred"` are reference, not tools. Cache key, default `part`, and per-page cache records are specified in the design doc.
+The v1 tools are the catalog methods with `"v1_status": "in_scope"`. Entries marked `"deferred"` are reference, not tools.
 
 Transport target for the MCP: **stdio** first (harness-friendly). HTTP later is out of v1 unless explicitly reopened.
 
@@ -38,7 +38,7 @@ State this in server instructions and tool descriptions so agents do not attempt
 - **YouTube Analytics** / Reporting APIs
 - Media download (yt-dlp) and watch-page HTML scraping
 
-**Transcripts (experimental):** `youtube_transcript` returns YouTube's public “Show transcript” track. It is **experimental**, **unsupported**, and **undocumented** — not part of the stable Data API tool surface. It can break when YouTube changes. Cached for one day; spends a local `transcript` counter. It is not Data API `captions.download` and it does not use `YOUTUBE_API_KEY`.
+**Transcripts (experimental):** `youtube_transcript` is off unless `ENABLE_MCP_TRANSCRIPT` is `1`/`true`. When enabled, it returns YouTube's public “Show transcript” track. It is **experimental**, **unsupported**, and **undocumented** — not part of the stable Data API tool surface. It can break when YouTube changes. Cached for one day; spends a local `transcript` counter. It is not Data API `captions.download` and it does not use `YOUTUBE_API_KEY`. Server instructions are built from `prompts/server.yaml` so discovery and copy stay in sync with the flag.
 
 ## Agent-harness discoverability rules
 

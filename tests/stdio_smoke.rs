@@ -17,13 +17,22 @@ fn bin() -> Command {
             "YT_RUST_MCP_PROMPTS",
             concat!(env!("CARGO_MANIFEST_DIR"), "/prompts"),
         );
+    // Default: transcript off. Clear any ambient enable from the parent env.
+    cmd.env_remove("ENABLE_MCP_TRANSCRIPT");
     cmd
 }
 
-#[test]
-fn starts_and_answers_initialize_and_tools_list() {
-    let cache = std::env::temp_dir().join(format!("yt-smoke-{}", std::process::id()));
-    let mut child = bin()
+fn roundtrip_tools_list(enable_transcript: bool) -> (String, Vec<String>) {
+    let cache = std::env::temp_dir().join(format!(
+        "yt-smoke-{}-{}",
+        std::process::id(),
+        enable_transcript as u8
+    ));
+    let mut child = bin();
+    if enable_transcript {
+        child.env("ENABLE_MCP_TRANSCRIPT", "1");
+    }
+    let mut child = child
         .env("YT_RUST_MCP_CACHE_DIR", &cache)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -67,24 +76,39 @@ fn starts_and_answers_initialize_and_tools_list() {
         .as_str()
         .unwrap()
         .to_string();
-    assert!(instructions.contains("Read-only"));
     let tools = tools.unwrap();
-    let names: Vec<&str> = tools["result"]["tools"]
+    let names: Vec<String> = tools["result"]["tools"]
         .as_array()
         .unwrap()
         .iter()
-        .map(|t| t["name"].as_str().unwrap())
+        .map(|t| t["name"].as_str().unwrap().to_string())
         .collect();
-    assert_eq!(names.len(), 6, "{names:?}");
-    assert!(names.contains(&"youtube_transcript"), "{names:?}");
     let schema = tools["result"]["tools"].to_string();
     assert!(!schema.contains("forMine"));
 
-    // Closing stdin must end the server cleanly (no panic while dropping the client).
     drop(stdin);
     let status = child.wait().unwrap();
     assert!(status.success(), "server exited with {status}");
     let _ = std::fs::remove_dir_all(&cache);
+    (instructions, names)
+}
+
+#[test]
+fn starts_and_answers_initialize_and_tools_list() {
+    let (instructions, names) = roundtrip_tools_list(false);
+    assert!(instructions.contains("Read-only"));
+    assert!(!instructions.contains("youtube_transcript"), "{instructions}");
+    assert_eq!(names.len(), 5, "{names:?}");
+    assert!(!names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
+}
+
+#[test]
+fn enable_flag_registers_transcript_and_mentions_it() {
+    let (instructions, names) = roundtrip_tools_list(true);
+    assert!(instructions.contains("youtube_transcript"), "{instructions}");
+    assert!(instructions.contains("experimental"), "{instructions}");
+    assert_eq!(names.len(), 6, "{names:?}");
+    assert!(names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
 }
 
 #[test]
@@ -100,5 +124,5 @@ fn missing_prompts_file_fails_loudly() {
         .unwrap();
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
-    assert!(err.contains("server.md"), "stderr: {err}");
+    assert!(err.contains("server.yaml"), "stderr: {err}");
 }
