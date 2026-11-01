@@ -17,6 +17,7 @@ pub fn execute(
 ) -> Result<Value, ToolError> {
     let mut page_query = request.query.clone();
     let mut merged_items = Vec::new();
+    let mut merged_body = None;
     let mut carry_token = page_query.get("pageToken").cloned();
     let mut all_cached = true;
     let ttl_for_method = ttl_seconds(request.method, ttl);
@@ -71,6 +72,9 @@ pub fn execute(
             live
         };
 
+        if merged_body.is_none() {
+            merged_body = Some(body.clone());
+        }
         if let Some(items) = body.get("items").and_then(Value::as_array) {
             merged_items.extend(items.clone());
         }
@@ -83,11 +87,21 @@ pub fn execute(
         }
     }
 
-    let mut out = json!({"items": merged_items, "cached": all_cached});
+    let mut out = merged_body.unwrap_or_else(|| json!({}));
+    let object = out
+        .as_object_mut()
+        .ok_or_else(|| ToolError::Http("YouTube response body was not an object".to_string()))?;
+    object.insert("items".to_string(), json!(merged_items));
+    object.insert("cached".to_string(), json!(all_cached));
     if let Some(token) = carry_token {
-        out["nextPageToken"] = json!(token);
-        out["quota_note"] =
-            json!("Another page costs another call. Pass page_token or raise max_pages.");
+        object.insert("nextPageToken".to_string(), json!(token));
+        object.insert(
+            "quota_note".to_string(),
+            json!("Another page costs another call. Pass page_token or raise max_pages."),
+        );
+    } else {
+        object.remove("nextPageToken");
+        object.remove("quota_note");
     }
     Ok(out)
 }
@@ -159,6 +173,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(first["cached"], false);
+        assert_eq!(first["kind"], "youtube#searchListResponse");
         let second = execute(
             &store,
             &http,
@@ -172,6 +187,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(second["cached"], true);
+        assert_eq!(second["kind"], "youtube#searchListResponse");
         assert_eq!(http.hits.lock().unwrap().len(), 1);
         assert!(store.can_spend("search", 99, 100, "2026-11-01").unwrap());
     }
