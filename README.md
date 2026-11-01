@@ -1,5 +1,10 @@
 # yt-rust-mcp
 
+[![CI](https://github.com/AdrianBinDC/yt-rust-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AdrianBinDC/yt-rust-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Rust 1.89+](https://img.shields.io/badge/rust-1.89%2B-blue.svg)](https://www.rust-lang.org)
+[![MCP stdio](https://img.shields.io/badge/MCP-stdio-informational.svg)](./docs/SETUP.md)
+
 Unofficial, not affiliated with Google or YouTube.
 
 Read-only YouTube Data API v3 tools for an MCP harness. Stdio transport. API key only.
