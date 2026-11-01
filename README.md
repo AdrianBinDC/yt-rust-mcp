@@ -21,6 +21,48 @@ cp .env.example .env
 cargo run --release
 ```
 
+## Docker (optional)
+
+No image is published. Build locally from the repo root:
+
+```bash
+docker build -t yt-rust-mcp:local .
+```
+
+Point an MCP client at a short-lived stdio container (`docker run -i --rm`). Pass secrets with `--env-file` (do not bake `.env` into the image). Config and prompts are already in the image. Cache/quota live under `YT_RUST_MCP_CACHE_DIR` — mount a host directory if you want them to persist.
+
+```json
+{
+  "mcpServers": {
+    "yt-rust-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--env-file",
+        "/ABS/PATH/TO/yt-rust-mcp/.env",
+        "-e",
+        "ENABLE_MCP_TRANSCRIPT=1",
+        "-e",
+        "RUST_LOG=yt_rust_mcp=debug",
+        "-e",
+        "YT_RUST_MCP_CACHE_DIR=/data",
+        "-v",
+        "/ABS/PATH/TO/yt-rust-mcp-cache:/data",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "yt-rust-mcp:local"
+      ]
+    }
+  }
+}
+```
+
+MCP traffic stays on stdout. Debug logs go to stderr (Cursor’s MCP output panel). More detail: [`docs/SETUP.md`](./docs/SETUP.md).
+
 ## Harness
 
 Command: `yt-rust-mcp` (or `cargo run --release` with `cwd` at the repo root).
