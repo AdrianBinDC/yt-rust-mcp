@@ -9,7 +9,7 @@ Get yt-rust-mcp running after a clone. No published Docker image required.
 3. Create a Google API key and enable **YouTube Data API v3** on the project (Google Cloud → APIs & Services).
 4. `cp .env.example .env`
 5. Set `YOUTUBE_API_KEY=...` in `.env`.
-6. Optional: add `ENABLE_MCP_TRANSCRIPT=1` in `.env` if you want the experimental transcript tool.
+6. Optional: add `ENABLE_MCP_TRANSCRIPT=1` in `.env` if you want the experimental transcript tool. Optional: `DEFAULT_TRANSCRIPT_LANGUAGE=en` so omitted `lang` prefers English captions.
 7. From the repo root, run `cargo run --release` once to confirm it starts (Ctrl+C to stop). Or skip and wire the harness next.
 8. Open **Cursor Settings → MCP**.
 9. Add a server using the Cursor snippet below. Set `cwd` to your clone path.
@@ -39,6 +39,7 @@ Replace `/ABS/PATH/TO/yt-rust-mcp` with your clone path.
 Optional in an `env` object on that server entry:
 
 - `ENABLE_MCP_TRANSCRIPT`: `1` for the experimental transcript tool
+- `DEFAULT_TRANSCRIPT_LANGUAGE`: e.g. `en` when the tool omits `lang`
 - `RUST_LOG`: `yt_rust_mcp=debug` for metadata-only debug logs on stderr
 
 ## Other MCP clients

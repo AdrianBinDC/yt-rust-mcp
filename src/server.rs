@@ -81,6 +81,8 @@ impl YoutubeServer {
     /// Blocking, like `run`: call only from spawn_blocking.
     fn run_transcript(&self, args: TranscriptArgs) -> Result<Value, ToolError> {
         let (video_id, lang, format, bypass_cache) = prepare_transcript(&args)?;
+        // Tool `lang` wins; otherwise DEFAULT_TRANSCRIPT_LANGUAGE when set.
+        let lang = lang.or_else(|| self.config.transcript_default_lang.clone());
         let tz =
             TimeZone::get("America/Los_Angeles").map_err(|e| ToolError::Store(e.to_string()))?;
         let now_zoned = Zoned::now().with_time_zone(tz);

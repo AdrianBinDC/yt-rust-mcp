@@ -17,8 +17,8 @@ fn bin() -> Command {
             "YT_RUST_MCP_PROMPTS",
             concat!(env!("CARGO_MANIFEST_DIR"), "/prompts"),
         );
-    // Default: transcript off. Clear any ambient enable from the parent env.
-    cmd.env_remove("ENABLE_MCP_TRANSCRIPT");
+    // Pin off so a developer .env cannot enable via dotenvy (it won't override).
+    cmd.env("ENABLE_MCP_TRANSCRIPT", "0");
     cmd
 }
 
