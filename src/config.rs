@@ -46,6 +46,8 @@ pub struct Config {
     pub prompts_dir: PathBuf,
     /// Experimental transcript tool. Off unless `ENABLE_MCP_TRANSCRIPT` is `1`/`true`.
     pub enable_transcript: bool,
+    /// When the tool omits `lang`, prefer this caption language (e.g. `en`).
+    pub transcript_default_lang: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +98,7 @@ impl Config {
             cache_dir,
             prompts_dir,
             enable_transcript: env_flag("ENABLE_MCP_TRANSCRIPT"),
+            transcript_default_lang: env_trimmed("DEFAULT_TRANSCRIPT_LANGUAGE"),
         })
     }
 }
@@ -115,6 +118,18 @@ fn env_flag(name: &str) -> bool {
         Ok(value) => matches!(value.to_ascii_lowercase().as_str(), "1" | "true"),
         Err(_) => false,
     }
+}
+
+/// Non-empty trimmed env value, lowercased. Blank/unset → None.
+fn env_trimmed(name: &str) -> Option<String> {
+    std::env::var(name).ok().and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_ascii_lowercase())
+        }
+    })
 }
 
 #[cfg(test)]
@@ -163,5 +178,43 @@ mod tests {
         std::env::set_var("ENABLE_MCP_TRANSCRIPT_TEST", "1");
         assert!(env_flag("ENABLE_MCP_TRANSCRIPT_TEST"));
         std::env::remove_var("ENABLE_MCP_TRANSCRIPT_TEST");
+    }
+
+    #[test]
+    fn default_transcript_language_comes_from_env() {
+        let dir = std::env::temp_dir().join(format!("yt-cfg-lang-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("default.toml");
+        let mut file = std::fs::File::create(&path).unwrap();
+        write!(
+            file,
+            "search_budget = 100\nnon_search_budget = 10000\ntranscript_budget = 200\nmax_entries = 10000\nmax_pages_hard_cap = 5\nsqlite_page_cache_kib = 2048\ncache_dir = \"/tmp/yt-default\"\n"
+        )
+        .unwrap();
+        write!(
+            file,
+            "[ttl_seconds]\nsearch = 3600\nvideos = 86400\nchannels = 604800\nplaylists = 604800\nplaylist_items = 86400\ntranscript = 86400\n"
+        )
+        .unwrap();
+        std::env::remove_var("DEFAULT_TRANSCRIPT_LANGUAGE");
+        std::env::set_var("YT_RUST_MCP_CACHE_DIR", dir.join("cache").to_str().unwrap());
+        let unset = Config::load(&path).unwrap();
+        assert_eq!(unset.transcript_default_lang, None);
+
+        std::env::set_var("DEFAULT_TRANSCRIPT_LANGUAGE", "en");
+        let set = Config::load(&path).unwrap();
+        assert_eq!(set.transcript_default_lang.as_deref(), Some("en"));
+
+        std::env::set_var("DEFAULT_TRANSCRIPT_LANGUAGE", "  EN  ");
+        let trimmed = Config::load(&path).unwrap();
+        assert_eq!(trimmed.transcript_default_lang.as_deref(), Some("en"));
+
+        std::env::set_var("DEFAULT_TRANSCRIPT_LANGUAGE", "   ");
+        let blank = Config::load(&path).unwrap();
+        assert_eq!(blank.transcript_default_lang, None);
+
+        std::env::remove_var("DEFAULT_TRANSCRIPT_LANGUAGE");
+        std::env::remove_var("YT_RUST_MCP_CACHE_DIR");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

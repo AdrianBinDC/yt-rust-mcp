@@ -83,6 +83,7 @@ Set `YOUTUBE_API_KEY` (`.env` or the environment). Optional:
 | `YT_RUST_MCP_CONFIG` | `config/default.toml` | Config file. Startup fails if unreadable |
 | `YT_RUST_MCP_PROMPTS` | `prompts` | Directory holding `server.yaml`. Startup fails if missing |
 | `ENABLE_MCP_TRANSCRIPT` | off | Set `1`/`true` to register experimental `youtube_transcript` |
+| `DEFAULT_TRANSCRIPT_LANGUAGE` | unset | Prefer this caption language when the tool omits `lang` |
 | `RUST_LOG` | `warn` | Opt-in debug: `yt_rust_mcp=debug` (stderr; no secrets/bodies) |
 
 Path defaults are relative to the process working directory. Prefer repo root as `cwd`.
