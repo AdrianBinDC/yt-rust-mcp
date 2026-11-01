@@ -25,3 +25,4 @@ jiff = { version = "0.2", features = ["static"] }
 dirs = "7"
 rusqlite = { version = "0.41", features = ["bundled"] }
 serde_yaml = "0.9"
+dotenvy = "0.15.7"

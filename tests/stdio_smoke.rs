@@ -97,15 +97,24 @@ fn roundtrip_tools_list(enable_transcript: bool) -> (String, Vec<String>) {
 fn starts_and_answers_initialize_and_tools_list() {
     let (instructions, names) = roundtrip_tools_list(false);
     assert!(instructions.contains("Read-only"));
-    assert!(!instructions.contains("youtube_transcript"), "{instructions}");
+    assert!(
+        !instructions.contains("youtube_transcript"),
+        "{instructions}"
+    );
     assert_eq!(names.len(), 5, "{names:?}");
-    assert!(!names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
+    assert!(
+        !names.iter().any(|n| n == "youtube_transcript"),
+        "{names:?}"
+    );
 }
 
 #[test]
 fn enable_flag_registers_transcript_and_mentions_it() {
     let (instructions, names) = roundtrip_tools_list(true);
-    assert!(instructions.contains("youtube_transcript"), "{instructions}");
+    assert!(
+        instructions.contains("youtube_transcript"),
+        "{instructions}"
+    );
     assert!(instructions.contains("experimental"), "{instructions}");
     assert_eq!(names.len(), 6, "{names:?}");
     assert!(names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
@@ -125,4 +134,23 @@ fn missing_prompts_file_fails_loudly() {
     assert!(!out.status.success());
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(err.contains("server.yaml"), "stderr: {err}");
+}
+
+#[test]
+fn missing_api_key_points_at_setup() {
+    let out = bin()
+        .env_remove("YOUTUBE_API_KEY")
+        .env(
+            "YT_RUST_MCP_CACHE_DIR",
+            std::env::temp_dir().join(format!("yt-smoke-nokey-{}", std::process::id())),
+        )
+        // Avoid picking up a developer .env from the repo while running smoke tests.
+        .current_dir(std::env::temp_dir())
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(!out.status.success());
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(err.contains("YOUTUBE_API_KEY is not set"), "stderr: {err}");
+    assert!(err.contains("docs/SETUP.md"), "stderr: {err}");
 }

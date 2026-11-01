@@ -16,10 +16,28 @@ pub fn default_log_filter() -> &'static str {
     "warn"
 }
 
+/// Message when `YOUTUBE_API_KEY` is missing after optional `.env` load.
+pub fn missing_api_key_message() -> &'static str {
+    "YOUTUBE_API_KEY is not set. Copy .env.example to .env, set YOUTUBE_API_KEY, and see docs/SETUP.md."
+}
+
+/// Read `YOUTUBE_API_KEY` from the environment (after dotenv, if used).
+pub fn youtube_api_key() -> Result<String, String> {
+    std::env::var("YOUTUBE_API_KEY").map_err(|_| missing_api_key_message().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
     fn default_log_filter_is_warn() {
         assert_eq!(crate::default_log_filter(), "warn");
+    }
+
+    #[test]
+    fn missing_api_key_message_points_at_setup() {
+        let msg = crate::missing_api_key_message();
+        assert!(msg.contains(".env.example"));
+        assert!(msg.contains("docs/SETUP.md"));
+        assert!(msg.contains("YOUTUBE_API_KEY"));
     }
 }

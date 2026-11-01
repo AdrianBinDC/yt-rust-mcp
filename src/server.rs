@@ -531,11 +531,19 @@ mod tests {
     #[test]
     fn data_api_router_omits_transcript_until_composed() {
         let data = YoutubeServer::data_api_router();
-        let names: Vec<_> = data.list_all().into_iter().map(|t| t.name.to_string()).collect();
+        let names: Vec<_> = data
+            .list_all()
+            .into_iter()
+            .map(|t| t.name.to_string())
+            .collect();
         assert_eq!(names.len(), 5, "{names:?}");
         assert!(!names.iter().any(|n| n == "youtube_transcript"));
         let both = data + YoutubeServer::transcript_router();
-        let names: Vec<_> = both.list_all().into_iter().map(|t| t.name.to_string()).collect();
+        let names: Vec<_> = both
+            .list_all()
+            .into_iter()
+            .map(|t| t.name.to_string())
+            .collect();
         assert!(names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
     }
 }
