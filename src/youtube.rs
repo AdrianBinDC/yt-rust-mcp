@@ -11,6 +11,70 @@ pub trait YoutubeHttp {
     ) -> Result<serde_json::Value, ToolError>;
 }
 
+pub struct ReqwestYoutube {
+    api_key: String,
+    http: reqwest::blocking::Client,
+}
+
+impl ReqwestYoutube {
+    pub fn new(api_key: String) -> Result<Self, ToolError> {
+        let http = reqwest::blocking::Client::builder()
+            .build()
+            .map_err(|error| ToolError::Http(error.to_string()))?;
+        Ok(Self { api_key, http })
+    }
+
+    pub fn url(method: Method, query: &BTreeMap<String, String>, api_key: &str) -> String {
+        let mut url = format!("https://youtube.googleapis.com/{}?", method.path());
+        for (name, value) in query {
+            url.push_str(&urlencoding_pair(name, value));
+            url.push('&');
+        }
+        url.push_str(&urlencoding_pair("key", api_key));
+        url
+    }
+}
+
+fn urlencoding_pair(name: &str, value: &str) -> String {
+    format!("{}={}", urlencoding(name), urlencoding(value))
+}
+
+fn urlencoding(value: &str) -> String {
+    let mut out = String::new();
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char);
+            }
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
+}
+
+impl YoutubeHttp for ReqwestYoutube {
+    fn get(
+        &self,
+        method: Method,
+        query: &BTreeMap<String, String>,
+    ) -> Result<serde_json::Value, ToolError> {
+        let url = Self::url(method, query, &self.api_key);
+        let response = self
+            .http
+            .get(&url)
+            .send()
+            .map_err(|error| ToolError::Http(error.to_string()))?;
+        let status = response.status().as_u16();
+        let text = response
+            .text()
+            .map_err(|error| ToolError::Http(error.to_string()))?;
+        if !(200..300).contains(&status) {
+            return Err(ToolError::from_google_body(status, &text));
+        }
+        serde_json::from_str(&text).map_err(|error| ToolError::Http(error.to_string()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
     Search,
@@ -283,6 +347,15 @@ pub fn ttl_seconds(method: Method, ttl: &TtlSeconds) -> i64 {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn live_client_sends_the_key_and_does_not_return_it() {
+        let query = BTreeMap::from([("part".to_string(), "snippet".to_string())]);
+        let url = ReqwestYoutube::url(Method::Videos, &query, "test-key");
+        assert!(url.contains("key=test-key"));
+        assert!(url.contains("part=snippet"));
+        assert!(!url.contains("test-keytest-key"));
+    }
 
     #[test]
     fn omitted_part_matches_explicit_default_and_drops_the_key() {
