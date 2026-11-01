@@ -2,6 +2,7 @@ use crate::call::execute;
 use crate::config::Config;
 use crate::error::ToolError;
 use crate::store::Store;
+use crate::transcript::execute::{execute as transcript_execute, ReqwestTranscript};
 use crate::youtube::{prepare, Method, ReqwestYoutube};
 use jiff::tz::TimeZone;
 use jiff::Zoned;
@@ -24,15 +25,23 @@ pub struct YoutubeServer {
     config: Config,
     store: std::sync::Arc<Mutex<Store>>,
     http: std::sync::Arc<ReqwestYoutube>,
+    transcript_http: std::sync::Arc<ReqwestTranscript>,
     instructions: String,
 }
 
 impl YoutubeServer {
-    pub fn new(config: Config, store: Store, http: ReqwestYoutube, instructions: String) -> Self {
+    pub fn new(
+        config: Config,
+        store: Store,
+        http: ReqwestYoutube,
+        transcript_http: ReqwestTranscript,
+        instructions: String,
+    ) -> Self {
         Self {
             config,
             store: std::sync::Arc::new(Mutex::new(store)),
             http: std::sync::Arc::new(http),
+            transcript_http: std::sync::Arc::new(transcript_http),
             instructions,
         }
     }
@@ -60,6 +69,51 @@ impl YoutubeServer {
             &today,
             self.config.max_entries,
         )
+    }
+
+    /// Blocking, like `run`: call only from spawn_blocking.
+    fn run_transcript(&self, args: TranscriptArgs) -> Result<Value, ToolError> {
+        let (video_id, lang, format, bypass_cache) = prepare_transcript(&args)?;
+        let tz =
+            TimeZone::get("America/Los_Angeles").map_err(|e| ToolError::Store(e.to_string()))?;
+        let now_zoned = Zoned::now().with_time_zone(tz);
+        let today = now_zoned.date().to_string();
+        let now = now_zoned.timestamp().as_second();
+        let store = self
+            .store
+            .lock()
+            .map_err(|e| ToolError::Store(e.to_string()))?;
+        transcript_execute(
+            &store,
+            self.transcript_http.as_ref(),
+            &video_id,
+            lang.as_deref(),
+            format.as_deref(),
+            bypass_cache,
+            self.config.ttl_seconds.transcript,
+            self.config.transcript_budget,
+            now,
+            &today,
+            self.config.max_entries,
+        )
+    }
+
+    async fn finish_transcript(
+        &self,
+        args: TranscriptArgs,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        let this = self.clone();
+        let outcome = tokio::task::spawn_blocking(move || this.run_transcript(args))
+            .await
+            .map_err(|err| rmcp::ErrorData::internal_error(err.to_string(), None))?;
+        match outcome {
+            Ok(body) => Ok(CallToolResult::success(vec![ContentBlock::text(
+                body.to_string(),
+            )])),
+            Err(err) => Ok(CallToolResult::error(vec![ContentBlock::text(
+                err.to_string(),
+            )])),
+        }
     }
 
     /// Tool failures return Ok(error result) so the agent sees the message;
@@ -214,6 +268,45 @@ struct PlaylistItemsArgs {
     bypass_cache: Option<bool>,
 }
 
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+struct TranscriptArgs {
+    /// Any key not declared here. Hidden from the schema, kept so it can be refused.
+    #[serde(flatten)]
+    #[schemars(skip)]
+    extra: Map<String, Value>,
+    /// Public video id (11 characters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    video_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lang: Option<String>,
+    /// text (default), srt, or vtt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bypass_cache: Option<bool>,
+}
+
+/// Returns (video_id, lang, format, bypass_cache). Format and id shape are
+/// validated later by `execute`.
+fn prepare_transcript(
+    args: &TranscriptArgs,
+) -> Result<(String, Option<String>, Option<String>, bool), ToolError> {
+    if let Some(name) = args.extra.keys().next() {
+        return Err(ToolError::UnknownParam(name.clone()));
+    }
+    let video_id = args
+        .video_id
+        .clone()
+        .filter(|id| !id.is_empty())
+        .ok_or(ToolError::MissingSelector("video_id"))?;
+    Ok((
+        video_id,
+        args.lang.clone(),
+        args.format.clone(),
+        args.bypass_cache.unwrap_or(false),
+    ))
+}
+
 #[tool_router]
 impl YoutubeServer {
     #[tool(
@@ -269,6 +362,17 @@ impl YoutubeServer {
         Parameters(args): Parameters<PlaylistItemsArgs>,
     ) -> Result<CallToolResult, rmcp::ErrorData> {
         self.finish(Method::PlaylistItems, to_args(&args)?).await
+    }
+
+    #[tool(
+        name = "youtube_transcript",
+        description = "Experimental: public Show transcript text or an SRT/VTT caption file. Unofficial and undocumented — not a Data API method; can break. Do not use for discovery or captions.download. Quota: 1 local transcript fetch; a cached repeat costs 0."
+    )]
+    async fn youtube_transcript(
+        &self,
+        Parameters(args): Parameters<TranscriptArgs>,
+    ) -> Result<CallToolResult, rmcp::ErrorData> {
+        self.finish_transcript(args).await
     }
 }
 
@@ -371,6 +475,31 @@ mod tests {
             assert!(!videos.contains(paging), "videos schema leaks {paging}");
             assert!(search.contains(paging));
         }
+    }
+
+    #[test]
+    fn transcript_prompt_names_the_unofficial_rules() {
+        let prompt = include_str!("../prompts/tools/youtube_transcript.md");
+        assert!(prompt.contains("When to use"));
+        assert!(prompt.contains("When not to use"));
+        assert!(prompt.contains("Quota"));
+        assert!(prompt.contains("unofficial"));
+        assert!(prompt.contains("experimental"));
+        let server = include_str!("../prompts/server.md");
+        assert!(server.contains("youtube_transcript"));
+        assert!(server.contains("experimental"));
+        assert!(server.contains("not affiliated"));
+    }
+
+    #[test]
+    fn transcript_tool_refuses_an_unknown_argument() {
+        let args: TranscriptArgs = serde_json::from_value(serde_json::json!({
+            "video_id": "abcdefghijk",
+            "mine": true
+        }))
+        .unwrap();
+        let err = prepare_transcript(&args).unwrap_err();
+        assert!(matches!(err, ToolError::UnknownParam(name) if name == "mine"));
     }
 
     #[test]

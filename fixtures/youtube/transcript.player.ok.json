@@ -1,0 +1,23 @@
+{
+  "playabilityStatus": { "status": "OK" },
+  "captions": {
+    "playerCaptionsTracklistRenderer": {
+      "captionTracks": [
+        {
+          "baseUrl": "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&fmt=srv3",
+          "languageCode": "en",
+          "kind": "asr"
+        },
+        {
+          "baseUrl": "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en",
+          "languageCode": "en"
+        },
+        {
+          "baseUrl": "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=es&fmt=srv3",
+          "languageCode": "es",
+          "kind": "asr"
+        }
+      ]
+    }
+  }
+}

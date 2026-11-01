@@ -4,6 +4,7 @@ ignores:
   - "**/node_modules/**"
   - "**/target/**"
   - "**/.superpowers/**"
+  - "**/docs/superpowers/**"
 config:
   default: true
   MD013: false

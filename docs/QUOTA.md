@@ -4,7 +4,7 @@ YouTube Data API projects get a **daily quota**. Defaults change; check Google C
 
 Practical rules for this MCP:
 
-1. **Two punch cards, not one.** A live page spends exactly one card. A cache hit spends neither.
+1. **Three counters.** A live Data API page spends exactly one of `search` or `non_search`. A live transcript fetch spends one `transcript`. A cache hit spends none.
 
 | Tool | API | Counter | Cost per live page | Default daily size |
 |---|---|---|---|---|
@@ -13,8 +13,11 @@ Practical rules for this MCP:
 | `youtube_channels_list` | `channels.list` | `non_search` | 1 | same 10,000 |
 | `youtube_playlists_list` | `playlists.list` | `non_search` | 1 | same 10,000 |
 | `youtube_playlist_items_list` | `playlistItems.list` | `non_search` | 1 | same 10,000 |
+| `youtube_transcript` | experimental undocumented caption track | `transcript` | 1 live fetch | 200 (`YOUTUBE_TRANSCRIPT_BUDGET`) |
 
-`search.list` does not spend `non_search`. The other four do not spend `search`. Both counters live in the SQLite file named in the design spec.
+A cache hit spends nothing, and this counter does not change `search` or `non_search`.
+
+`search.list` does not spend `non_search`. The other four Data API tools do not spend `search`. `youtube_transcript` spends only `transcript`. The three counters live in the SQLite file named in the design spec.
 
 Deferred catalog methods (`videoCategories.list`, `i18nLanguages.list`, `i18nRegions.list`) are not v1 tools. If added later, each costs 1 on `non_search`.
 

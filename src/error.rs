@@ -28,6 +28,20 @@ pub enum ToolError {
     Store(String),
     #[error("http: {0}")]
     Http(String),
+    #[error("invalid video id")]
+    InvalidVideoId,
+    #[error("invalid format: {0}")]
+    InvalidFormat(String),
+    #[error("no caption track")]
+    NoCaptionTrack,
+    #[error("no caption track for language {0}")]
+    NoCaptionLanguage(String),
+    #[error("caption track requires a browser token")]
+    BrowserTokenRequired,
+    #[error("transcript empty")]
+    EmptyTranscript,
+    #[error("video unplayable: {status}: {reason}")]
+    Unplayable { status: String, reason: String },
 }
 
 impl ToolError {

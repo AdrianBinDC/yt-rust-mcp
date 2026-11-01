@@ -17,7 +17,17 @@ fixtures/youtube/
   videos.list.ok.json
   error.quotaExceeded.json
   error.forbidden.json
+  transcript.timed.json
+  transcript.timed.text
+  transcript.timed.srt
+  transcript.timed.vtt
+  transcript.player.ok.json
+  transcript.player.no-tracks.json
+  transcript.player.token.json
+  transcript.empty.json
 ```
+
+Transcript tests render the saved timed list and never call YouTube.
 
 Names mirror the API method and the outcome. Bodies are synthetic.
 

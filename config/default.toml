@@ -1,12 +1,16 @@
 search_budget = 100
 non_search_budget = 10000
+transcript_budget = 200
 max_entries = 10000
 max_pages_hard_cap = 5
 sqlite_page_cache_kib = 2048
 
+# How long a successful cache row stays fresh (seconds).
+# 3600 = 60*60 (1h), 86400 = 24*60*60 (1d), 604800 = 7*24*60*60 (7d).
 [ttl_seconds]
 search = 3600
 videos = 86400
 channels = 604800
 playlists = 604800
 playlist_items = 86400
+transcript = 86400

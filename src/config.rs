@@ -24,12 +24,14 @@ pub struct TtlSeconds {
     pub channels: i64,
     pub playlists: i64,
     pub playlist_items: i64,
+    pub transcript: i64,
 }
 
 #[derive(Debug, Clone)]
 pub struct Config {
     pub search_budget: i64,
     pub non_search_budget: i64,
+    pub transcript_budget: i64,
     pub max_entries: i64,
     pub max_pages_hard_cap: u32,
     pub sqlite_page_cache_kib: i64,
@@ -43,6 +45,7 @@ pub struct Config {
 struct FileConfig {
     search_budget: i64,
     non_search_budget: i64,
+    transcript_budget: i64,
     max_entries: i64,
     max_pages_hard_cap: u32,
     sqlite_page_cache_kib: i64,
@@ -62,6 +65,7 @@ impl Config {
         let file: FileConfig = toml::from_str(&text)?;
         let search_budget = env_i64("YOUTUBE_SEARCH_BUDGET", file.search_budget)?;
         let non_search_budget = env_i64("YOUTUBE_NON_SEARCH_BUDGET", file.non_search_budget)?;
+        let transcript_budget = env_i64("YOUTUBE_TRANSCRIPT_BUDGET", file.transcript_budget)?;
         let cache_dir = std::env::var_os("YT_RUST_MCP_CACHE_DIR")
             .map(PathBuf::from)
             .or(file.cache_dir)
@@ -73,6 +77,7 @@ impl Config {
         Ok(Self {
             search_budget,
             non_search_budget,
+            transcript_budget,
             max_entries: file.max_entries,
             max_pages_hard_cap: file.max_pages_hard_cap,
             sqlite_page_cache_kib: file.sqlite_page_cache_kib,
@@ -106,12 +111,12 @@ mod tests {
         let mut file = std::fs::File::create(&path).unwrap();
         write!(
             file,
-            "search_budget = 100\nnon_search_budget = 10000\nmax_entries = 10000\nmax_pages_hard_cap = 5\nsqlite_page_cache_kib = 2048\ncache_dir = \"/tmp/yt-default\"\n"
+            "search_budget = 100\nnon_search_budget = 10000\ntranscript_budget = 200\nmax_entries = 10000\nmax_pages_hard_cap = 5\nsqlite_page_cache_kib = 2048\ncache_dir = \"/tmp/yt-default\"\n"
         )
         .unwrap();
         write!(
             file,
-            "[ttl_seconds]\nsearch = 3600\nvideos = 86400\nchannels = 604800\nplaylists = 604800\nplaylist_items = 86400\n"
+            "[ttl_seconds]\nsearch = 3600\nvideos = 86400\nchannels = 604800\nplaylists = 604800\nplaylist_items = 86400\ntranscript = 86400\n"
         )
         .unwrap();
         std::env::set_var("YOUTUBE_SEARCH_BUDGET", "7");
@@ -119,6 +124,8 @@ mod tests {
         let cfg = Config::load(&path).unwrap();
         assert_eq!(cfg.search_budget, 7);
         assert_eq!(cfg.non_search_budget, 10_000);
+        assert_eq!(cfg.transcript_budget, 200);
+        assert_eq!(cfg.ttl_seconds.transcript, 86400);
         assert_eq!(cfg.ttl_seconds.search, 3600);
         assert_eq!(cfg.db_path, dir.join("cache").join("yt-rust-mcp.db"));
         std::env::remove_var("YOUTUBE_SEARCH_BUDGET");
