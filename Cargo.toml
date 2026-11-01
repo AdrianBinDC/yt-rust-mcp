@@ -1,0 +1,22 @@
+[package]
+name = "yt-rust-mcp"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+description = "Read-only YouTube Data API v3 MCP server"
+
+[dependencies]
+rmcp = { version = "3.8", features = ["server", "transport-io"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+toml = "0.9"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+jiff = { version = "0.2", features = ["static"] }
+dirs = "6"
+rusqlite = { version = "0.37", features = ["bundled"] }

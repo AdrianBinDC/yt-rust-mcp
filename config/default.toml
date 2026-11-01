@@ -1,0 +1,12 @@
+search_budget = 100
+non_search_budget = 10000
+max_entries = 10000
+max_pages_hard_cap = 5
+sqlite_page_cache_kib = 2048
+
+[ttl_seconds]
+search = 3600
+videos = 86400
+channels = 604800
+playlists = 604800
+playlist_items = 86400
