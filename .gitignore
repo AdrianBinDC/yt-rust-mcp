@@ -19,3 +19,6 @@ Cargo.lock.bak
 
 # Local git worktrees
 .worktrees/
+
+# Local agent session scratch
+.superpowers/
