@@ -3,6 +3,14 @@ use crate::error::ToolError;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+pub trait YoutubeHttp {
+    fn get(
+        &self,
+        method: Method,
+        query: &BTreeMap<String, String>,
+    ) -> Result<serde_json::Value, ToolError>;
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
     Search,
