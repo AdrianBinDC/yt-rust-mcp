@@ -20,7 +20,7 @@ impl ReqwestYoutube {
     pub fn new(api_key: String) -> Result<Self, ToolError> {
         let http = reqwest::blocking::Client::builder()
             .build()
-            .map_err(|error| ToolError::Http(error.to_string()))?;
+            .map_err(map_reqwest_error)?;
         Ok(Self { api_key, http })
     }
 
@@ -52,6 +52,10 @@ fn urlencoding(value: &str) -> String {
     out
 }
 
+fn map_reqwest_error(error: reqwest::Error) -> ToolError {
+    ToolError::Http(error.without_url().to_string())
+}
+
 impl YoutubeHttp for ReqwestYoutube {
     fn get(
         &self,
@@ -59,15 +63,9 @@ impl YoutubeHttp for ReqwestYoutube {
         query: &BTreeMap<String, String>,
     ) -> Result<serde_json::Value, ToolError> {
         let url = Self::url(method, query, &self.api_key);
-        let response = self
-            .http
-            .get(&url)
-            .send()
-            .map_err(|error| ToolError::Http(error.to_string()))?;
+        let response = self.http.get(&url).send().map_err(map_reqwest_error)?;
         let status = response.status().as_u16();
-        let text = response
-            .text()
-            .map_err(|error| ToolError::Http(error.to_string()))?;
+        let text = response.text().map_err(map_reqwest_error)?;
         if !(200..300).contains(&status) {
             return Err(ToolError::from_google_body(status, &text));
         }
@@ -355,6 +353,20 @@ mod tests {
         assert!(url.contains("key=test-key"));
         assert!(url.contains("part=snippet"));
         assert!(!url.contains("test-keytest-key"));
+    }
+
+    #[test]
+    fn reqwest_errors_do_not_expose_request_urls() {
+        let error = reqwest::blocking::Client::new()
+            .get("ftp://example.test/videos?key=secret-key")
+            .send()
+            .unwrap_err();
+        assert!(error.url().unwrap().as_str().contains("key=secret-key"));
+
+        let mapped = map_reqwest_error(error).to_string();
+        assert!(!mapped.contains("key="));
+        assert!(!mapped.contains("secret-key"));
+        assert!(!mapped.contains("example.test"));
     }
 
     #[test]
