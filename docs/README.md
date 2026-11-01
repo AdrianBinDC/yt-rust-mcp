@@ -13,3 +13,4 @@
 3. [`TESTING.md`](./TESTING.md) — unit tests + fixtures only; never live endpoints
 4. [`v1-methods.catalog.json`](./v1-methods.catalog.json) — v1 candidates; **implement only** methods with `"v1_status": "in_scope"` (deferred methods stay in the file as reference)
 5. [`youtube-v3-discovery.v1-readonly.json`](./youtube-v3-discovery.v1-readonly.json) — trimmed Discovery doc for those methods + schemas
+6. [`superpowers/specs/2026-11-01-transcripts-next.md`](./superpowers/specs/2026-11-01-transcripts-next.md) — parked next step (unofficial public transcripts; design before code)

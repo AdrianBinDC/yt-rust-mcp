@@ -38,6 +38,8 @@ State this in server instructions and tool descriptions so agents do not attempt
 - **YouTube Analytics** / Reporting APIs
 - Media download (yt-dlp) and unofficial transcript scraping
 
+**Parked next (not v1):** public “Show transcript” style fetch as a **separate, clearly labeled** tool — not Data API, not OAuth. See [`superpowers/specs/2026-11-01-transcripts-next.md`](./superpowers/specs/2026-11-01-transcripts-next.md). Cache + graceful errors required. Do not implement until that note is designed and approved.
+
 ## Agent-harness discoverability rules
 
 - Server `instructions` must say: **read-only**, **API key**, **public data**, and list the tools.
