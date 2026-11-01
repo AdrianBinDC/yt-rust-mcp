@@ -1,0 +1,13 @@
+{
+  "playabilityStatus": { "status": "OK" },
+  "captions": {
+    "playerCaptionsTracklistRenderer": {
+      "captionTracks": [
+        {
+          "baseUrl": "https://www.youtube.com/api/timedtext?v=abcdefghijk&lang=en&fmt=srv3&exp=xpe",
+          "languageCode": "en"
+        }
+      ]
+    }
+  }
+}

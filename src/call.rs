@@ -43,6 +43,13 @@ pub fn execute(
             store.get_fresh(&key, now)?
         };
         let body = if let Some(text) = cached_body {
+            tracing::debug!(
+                method = request.method.api_name(),
+                page,
+                bypass_cache = request.bypass_cache,
+                cache_hit = true,
+                "data api page"
+            );
             serde_json::from_str(&text).map_err(|e| ToolError::Store(e.to_string()))?
         } else {
             all_cached = false;
@@ -55,12 +62,25 @@ pub fn execute(
                 });
             }
             store.debit(request.method.counter(), 1, budget, today)?;
+            tracing::debug!(
+                method = request.method.api_name(),
+                page,
+                counter = request.method.counter(),
+                bypass_cache = request.bypass_cache,
+                cache_hit = false,
+                "data api page"
+            );
             let live = http.get(request.method, &page_query)?;
             if live.get("error").is_some() {
                 let status = live
                     .pointer("/error/code")
                     .and_then(Value::as_u64)
                     .unwrap_or(400) as u16;
+                tracing::debug!(
+                    method = request.method.api_name(),
+                    status,
+                    "data api google error"
+                );
                 return Err(ToolError::from_google_body(status, &live.to_string()));
             }
             store.put(
@@ -150,6 +170,7 @@ mod tests {
             channels: 604800,
             playlists: 604800,
             playlist_items: 86400,
+            transcript: 86400,
         }
     }
 

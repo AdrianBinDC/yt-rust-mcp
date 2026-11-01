@@ -5,10 +5,12 @@ use yt_rust_mcp::config::Config;
 use yt_rust_mcp::default_log_filter;
 use yt_rust_mcp::server::YoutubeServer;
 use yt_rust_mcp::store::Store;
+use yt_rust_mcp::transcript::execute::build_transcript_http;
 use yt_rust_mcp::youtube::build_http;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Logs → stderr only (stdio MCP uses stdout). Default warn; see default_log_filter.
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_ansi(false)
@@ -26,7 +28,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = Store::open(&config.db_path, config.sqlite_page_cache_kib)?;
     let instructions = config.load_instructions()?;
     let http = build_http(api_key).await?;
-    let server = YoutubeServer::new(config, store, http, instructions);
+    let transcript_http = build_transcript_http().await?;
+    let server = YoutubeServer::new(config, store, http, transcript_http, instructions);
     let running = server.serve(rmcp::transport::stdio()).await?;
     running.waiting().await?;
     Ok(())

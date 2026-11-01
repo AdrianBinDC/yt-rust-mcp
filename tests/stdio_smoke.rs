@@ -75,7 +75,8 @@ fn starts_and_answers_initialize_and_tools_list() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names.len(), 5, "{names:?}");
+    assert_eq!(names.len(), 6, "{names:?}");
+    assert!(names.contains(&"youtube_transcript"), "{names:?}");
     let schema = tools["result"]["tools"].to_string();
     assert!(!schema.contains("forMine"));
 

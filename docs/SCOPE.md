@@ -4,7 +4,7 @@ This file is the contract for humans and coding agents. v1 of this contract is i
 
 ## One-line product
 
-A **lightweight Rust MCP server** that exposes **read-only** YouTube Data API v3 calls so agent harnesses can **discover and inspect** public YouTube videos, channels, and playlists.
+A **lightweight Rust MCP server** that exposes **read-only** YouTube Data API v3 calls so agent harnesses can **discover and inspect** public YouTube videos, channels, and playlists. This project is **unofficial** and is **not affiliated with Google or YouTube**.
 
 ## In scope (v1)
 
@@ -36,9 +36,9 @@ State this in server instructions and tool descriptions so agents do not attempt
 - **Comments**, **subscriptions**, **live** streaming/chat
 - **Members** / Super Chat
 - **YouTube Analytics** / Reporting APIs
-- Media download (yt-dlp) and unofficial transcript scraping
+- Media download (yt-dlp) and watch-page HTML scraping
 
-**Parked next (not v1):** public “Show transcript” style fetch as a **separate, clearly labeled** tool — not Data API, not OAuth. See [`superpowers/specs/2026-11-01-transcripts-next.md`](./superpowers/specs/2026-11-01-transcripts-next.md). Cache + graceful errors required. Do not implement until that note is designed and approved.
+**Transcripts (experimental):** `youtube_transcript` returns YouTube's public “Show transcript” track. It is **experimental**, **unsupported**, and **undocumented** — not part of the stable Data API tool surface. It can break when YouTube changes. Cached for one day; spends a local `transcript` counter. It is not Data API `captions.download` and it does not use `YOUTUBE_API_KEY`.
 
 ## Agent-harness discoverability rules
 
@@ -75,7 +75,7 @@ State this in server instructions and tool descriptions so agents do not attempt
 - **Settings / prompts outside code** — TOML for settings, Markdown for prompts; secrets in env
 - **Unit tests on everything** that matters — see [`TESTING.md`](./TESTING.md)
 - **Fixtures only — never live endpoints in tests.** No network to `googleapis.com` from `cargo test`
-- **Rate / quota management**: two counters, `search` and `non_search`. If either one cannot pay for the next live page, return a tool error and do not call YouTube.
+- **Rate / quota management**: counters `search` and `non_search` for Data API tools, plus the local `transcript` counter for `youtube_transcript`. If the counter that pays cannot cover the next live call, return a tool error and do not call YouTube.
 - **Local complexity**: O(1) dispatch. Cache lookup and quota check are one primary-key read each. Pagination is O(N) network by nature — no quadratic scans
 - **Comments and docs:** concise and high-signal. A human reading the file should be able to follow what is going on. Explain the decision or the next step when the code does not already say it. Do not narrate obvious lines.
 

@@ -1,0 +1,15 @@
+{
+  "events": [
+    {
+      "tStartMs": 1200,
+      "dDurationMs": 3300,
+      "segs": [{ "utf8": "hello " }, { "utf8": "world" }]
+    },
+    { "tStartMs": 5000, "dDurationMs": 1000, "segs": [{ "utf8": "\n" }] },
+    {
+      "tStartMs": 6000,
+      "dDurationMs": 2000,
+      "segs": [{ "utf8": "second line" }]
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 # yt-rust-mcp
 
+Unofficial, not affiliated with Google or YouTube.
+
 Read-only YouTube Data API v3 tools for an MCP harness. Stdio transport. API key only.
+
+Optional experimental tool: `youtube_transcript` (undocumented caption path; can break; not Data API).
 
 ## Run
 
@@ -26,6 +30,7 @@ Set `YOUTUBE_API_KEY`. Optional:
 | `YT_RUST_MCP_CACHE_DIR` | OS cache dir | Where the SQLite cache and quota counters live |
 | `YT_RUST_MCP_CONFIG` | `config/default.toml` | Config file. Startup fails if unreadable |
 | `YT_RUST_MCP_PROMPTS` | `prompts` | Directory holding `server.md`. Startup fails if missing |
+| `RUST_LOG` | `warn` | Opt-in debug: `yt_rust_mcp=debug` (stderr; no secrets/bodies) |
 
 The two path defaults are relative to the process's working directory. Run from
 the repo root, or set both to absolute paths (the Docker image does).

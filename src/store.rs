@@ -124,10 +124,10 @@ impl Store {
         let spent = spent_today_tx(&tx, counter, today)?;
         if spent + cost > budget {
             return Err(ToolError::QuotaExhausted {
-                counter: if counter == "search" {
-                    "search"
-                } else {
-                    "non_search"
+                counter: match counter {
+                    "search" => "search",
+                    "transcript" => "transcript",
+                    _ => "non_search",
                 },
                 remaining: budget - spent,
                 cost,
@@ -230,5 +230,13 @@ mod tests {
         store.debit("search", 3, 10, "2026-11-01").unwrap();
         assert_eq!(store.remaining("search", 10, "2026-11-01").unwrap(), 7);
         assert_eq!(store.remaining("search", 10, "2026-11-02").unwrap(), 10);
+    }
+
+    #[test]
+    fn transcript_debit_names_the_transcript_counter() {
+        let store = temp_store();
+        let err = store.debit("transcript", 1, 0, "2026-11-01").unwrap_err();
+        assert!(err.to_string().contains("transcript"));
+        assert!(!err.to_string().contains("non_search"));
     }
 }
