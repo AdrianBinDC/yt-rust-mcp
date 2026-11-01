@@ -35,6 +35,14 @@ impl ReqwestYoutube {
     }
 }
 
+/// `reqwest::blocking::Client` owns its own runtime and panics if built or
+/// dropped on an async worker thread, so async callers must build it here.
+pub async fn build_http(api_key: String) -> Result<ReqwestYoutube, ToolError> {
+    tokio::task::spawn_blocking(move || ReqwestYoutube::new(api_key))
+        .await
+        .map_err(|e| ToolError::Http(format!("client build task failed: {e}")))?
+}
+
 fn urlencoding_pair(name: &str, value: &str) -> String {
     format!("{}={}", urlencoding(name), urlencoding(value))
 }
@@ -131,6 +139,62 @@ const AUTH_ONLY: &[&str] = &[
     "onBehalfOfContentOwnerChannel",
 ];
 
+/// Tool-facing argument names per method (snake_case only). Anything else is
+/// refused so a typo or camelCase alias never silently changes the request.
+fn allowed_args(method: Method) -> &'static [&'static str] {
+    match method {
+        Method::Search => &[
+            "q",
+            "part",
+            "type",
+            "order",
+            "channel_id",
+            "published_after",
+            "published_before",
+            "video_duration",
+            "region_code",
+            "relevance_language",
+            "safe_search",
+            "page_token",
+            "max_results",
+            "max_pages",
+            "bypass_cache",
+        ],
+        // No paging: paging names are refused earlier with a specific error.
+        Method::Videos => &["id", "part", "hl", "bypass_cache"],
+        Method::Channels => &[
+            "id",
+            "for_handle",
+            "for_username",
+            "part",
+            "hl",
+            "max_results",
+            "max_pages",
+            "page_token",
+            "bypass_cache",
+        ],
+        Method::Playlists => &[
+            "id",
+            "channel_id",
+            "part",
+            "hl",
+            "max_results",
+            "max_pages",
+            "page_token",
+            "bypass_cache",
+        ],
+        Method::PlaylistItems => &[
+            "playlist_id",
+            "video_id",
+            "part",
+            "max_results",
+            "max_pages",
+            "page_token",
+            "bypass_cache",
+        ],
+    }
+}
+
 pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest, ToolError> {
     let obj = raw.as_object().cloned().unwrap_or_default();
     for name in AUTH_ONLY {
@@ -149,6 +213,12 @@ pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest
             if obj.contains_key(name) {
                 return Err(ToolError::VideosListPaging(name.to_string()));
             }
+        }
+    }
+    let allowed = allowed_args(method);
+    for name in obj.keys() {
+        if !allowed.contains(&name.as_str()) {
+            return Err(ToolError::UnknownParam(name.clone()));
         }
     }
     let max_pages = match obj.get("max_pages").and_then(|v| v.as_u64()) {
@@ -409,9 +479,28 @@ mod tests {
 
     #[test]
     fn empty_playlist_selector_is_missing() {
-        for raw in [json!({"playlist_id": ""}), json!({"playlistId": ""})] {
+        let err = prepare(Method::PlaylistItems, &json!({"playlist_id": ""}), 5).unwrap_err();
+        assert!(matches!(err, ToolError::MissingSelector("playlist_id")));
+    }
+
+    #[test]
+    fn refuses_unknown_and_camel_case_args() {
+        for name in ["playlistId", "maxResults", "nope"] {
+            let raw = json!({"playlist_id": "PL1", name: 1});
             let err = prepare(Method::PlaylistItems, &raw, 5).unwrap_err();
-            assert!(matches!(err, ToolError::MissingSelector("playlist_id")));
+            assert!(matches!(err, ToolError::UnknownParam(ref n) if n == name));
+        }
+        // hl is valid for channels but not for search.
+        let err = prepare(Method::Search, &json!({"q": "x", "hl": "en"}), 5).unwrap_err();
+        assert!(matches!(err, ToolError::UnknownParam(ref n) if n == "hl"));
+    }
+
+    #[test]
+    fn videos_list_refuses_null_paging_args() {
+        for name in ["max_results", "max_pages", "page_token", "pageToken"] {
+            let raw = json!({"id": "abc", name: null});
+            let err = prepare(Method::Videos, &raw, 5).unwrap_err();
+            assert!(matches!(err, ToolError::VideosListPaging(ref n) if n == name));
         }
     }
 

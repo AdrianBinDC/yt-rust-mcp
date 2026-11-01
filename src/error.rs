@@ -10,6 +10,8 @@ pub enum ToolError {
     },
     #[error("refused auth-only parameter: {0}")]
     AuthOnlyParam(String),
+    #[error("unknown parameter: {0}")]
+    UnknownParam(String),
     #[error("youtube_videos_list does not accept {0}")]
     VideosListPaging(String),
     #[error("missing required selector: {0}")]

@@ -10,20 +10,13 @@ use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig
 use rmcp::{tool, tool_handler, tool_router, ServerHandler};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::sync::Mutex;
 
-/// Turn tool args into the JSON `prepare` reads. Unset fields are omitted
+/// Turn tool args into the JSON `prepare` reads. Unset typed fields are omitted
 /// (not null) because `prepare` treats any present key as set.
 fn to_args(args: &impl Serialize) -> Result<Value, rmcp::ErrorData> {
     serde_json::to_value(args).map_err(|e| rmcp::ErrorData::internal_error(e.to_string(), None))
-}
-
-fn deserialize_present<'de, D>(deserializer: D) -> Result<Option<Value>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    Value::deserialize(deserializer).map(Some)
 }
 
 #[derive(Clone)]
@@ -31,14 +24,16 @@ pub struct YoutubeServer {
     config: Config,
     store: std::sync::Arc<Mutex<Store>>,
     http: std::sync::Arc<ReqwestYoutube>,
+    instructions: String,
 }
 
 impl YoutubeServer {
-    pub fn new(config: Config, store: Store, http: ReqwestYoutube) -> Self {
+    pub fn new(config: Config, store: Store, http: ReqwestYoutube, instructions: String) -> Self {
         Self {
             config,
             store: std::sync::Arc::new(Mutex::new(store)),
             http: std::sync::Arc::new(http),
+            instructions,
         }
     }
 
@@ -85,76 +80,13 @@ impl YoutubeServer {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize, JsonSchema)]
-struct AuthOnlyArgs {
-    #[serde(
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    mine: Option<Value>,
-    #[serde(
-        rename = "forMine",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    for_mine: Option<Value>,
-    #[serde(
-        rename = "myRating",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    my_rating: Option<Value>,
-    #[serde(
-        rename = "mySubscribers",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    my_subscribers: Option<Value>,
-    #[serde(
-        rename = "managedByMe",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    managed_by_me: Option<Value>,
-    #[serde(
-        rename = "forContentOwner",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    for_content_owner: Option<Value>,
-    #[serde(
-        rename = "forDeveloper",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    for_developer: Option<Value>,
-    #[serde(
-        rename = "onBehalfOfContentOwner",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    on_behalf_of_content_owner: Option<Value>,
-    #[serde(
-        rename = "onBehalfOfContentOwnerChannel",
-        default,
-        deserialize_with = "deserialize_present",
-        skip_serializing_if = "Option::is_none"
-    )]
-    on_behalf_of_content_owner_channel: Option<Value>,
-}
-
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct SearchArgs {
+    /// Every key not declared as a field here (auth-only, camelCase, typos, videos paging).
+    /// Hidden from the schema but kept, null included, so `prepare` can refuse it.
     #[serde(flatten)]
-    auth_only: AuthOnlyArgs,
+    #[schemars(skip)]
+    extra: Map<String, Value>,
     /// Search words.
     #[serde(skip_serializing_if = "Option::is_none")]
     q: Option<String>,
@@ -191,8 +123,11 @@ struct SearchArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct VideosArgs {
+    /// Every key not declared as a field here (auth-only, camelCase, typos, videos paging).
+    /// Hidden from the schema but kept, null included, so `prepare` can refuse it.
     #[serde(flatten)]
-    auth_only: AuthOnlyArgs,
+    #[schemars(skip)]
+    extra: Map<String, Value>,
     /// Comma-separated video ids.
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
@@ -201,19 +136,16 @@ struct VideosArgs {
     #[serde(skip_serializing_if = "Option::is_none")]
     hl: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    max_results: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    max_pages: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    page_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     bypass_cache: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct ChannelsArgs {
+    /// Every key not declared as a field here (auth-only, camelCase, typos, videos paging).
+    /// Hidden from the schema but kept, null included, so `prepare` can refuse it.
     #[serde(flatten)]
-    auth_only: AuthOnlyArgs,
+    #[schemars(skip)]
+    extra: Map<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -236,8 +168,11 @@ struct ChannelsArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PlaylistsArgs {
+    /// Every key not declared as a field here (auth-only, camelCase, typos, videos paging).
+    /// Hidden from the schema but kept, null included, so `prepare` can refuse it.
     #[serde(flatten)]
-    auth_only: AuthOnlyArgs,
+    #[schemars(skip)]
+    extra: Map<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -258,8 +193,11 @@ struct PlaylistsArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PlaylistItemsArgs {
+    /// Every key not declared as a field here (auth-only, camelCase, typos, videos paging).
+    /// Hidden from the schema but kept, null included, so `prepare` can refuse it.
     #[serde(flatten)]
-    auth_only: AuthOnlyArgs,
+    #[schemars(skip)]
+    extra: Map<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     playlist_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -338,9 +276,7 @@ impl YoutubeServer {
 impl ServerHandler for YoutubeServer {
     fn get_info(&self) -> ServerConfig {
         let mut config = ServerConfig::new(ServerCapabilities::builder().enable_tools().build());
-        let instructions = std::fs::read_to_string(self.config.prompts_dir.join("server.md"))
-            .unwrap_or_else(|_| "Read-only YouTube Data API v3.".to_string());
-        config.instructions = Some(instructions);
+        config.instructions = Some(self.instructions.clone());
         config
     }
 }
@@ -382,18 +318,59 @@ mod tests {
 
     #[test]
     fn unset_args_are_omitted_so_videos_paging_check_passes() {
-        let args = VideosArgs {
-            auth_only: AuthOnlyArgs::default(),
-            id: Some("abc".into()),
-            part: None,
-            hl: None,
-            max_results: None,
-            max_pages: None,
-            page_token: None,
-            bypass_cache: None,
-        };
+        let args: VideosArgs = serde_json::from_value(serde_json::json!({"id": "abc"})).unwrap();
         let value = to_args(&args).unwrap();
         assert!(prepare(Method::Videos, &value, 5).is_ok());
+    }
+
+    #[test]
+    fn videos_paging_args_survive_tool_json_path_and_are_refused() {
+        for name in [
+            "max_results",
+            "maxResults",
+            "max_pages",
+            "page_token",
+            "pageToken",
+        ] {
+            for v in [serde_json::json!(5), Value::Null] {
+                let args: VideosArgs =
+                    serde_json::from_value(serde_json::json!({"id": "abc", name: v})).unwrap();
+                let value = to_args(&args).unwrap();
+                assert!(matches!(
+                    prepare(Method::Videos, &value, 5),
+                    Err(ToolError::VideosListPaging(ref n)) if n == name
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn unknown_arg_survives_tool_json_path_and_is_refused() {
+        let args: ChannelsArgs = serde_json::from_value(serde_json::json!({
+            "id": "UC1",
+            "forHandle": "@x"
+        }))
+        .unwrap();
+        let value = to_args(&args).unwrap();
+        assert!(matches!(
+            prepare(Method::Channels, &value, 5),
+            Err(ToolError::UnknownParam(ref n)) if n == "forHandle"
+        ));
+    }
+
+    #[test]
+    fn hidden_args_are_not_in_json_schema() {
+        let schema = |s: schemars::Schema| serde_json::to_string(&s).unwrap();
+        let videos = schema(schemars::schema_for!(VideosArgs));
+        let search = schema(schemars::schema_for!(SearchArgs));
+        for hidden in ["forMine", "mine", "maxResults", "extra"] {
+            assert!(!videos.contains(hidden), "videos schema leaks {hidden}");
+            assert!(!search.contains(hidden), "search schema leaks {hidden}");
+        }
+        for paging in ["max_results", "max_pages", "page_token"] {
+            assert!(!videos.contains(paging), "videos schema leaks {paging}");
+            assert!(search.contains(paging));
+        }
     }
 
     #[test]

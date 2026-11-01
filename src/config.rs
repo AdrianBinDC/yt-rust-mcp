@@ -8,6 +8,11 @@ pub enum ConfigError {
     Read(#[from] std::io::Error),
     #[error("parse config: {0}")]
     Parse(#[from] toml::de::Error),
+    #[error("read server instructions {path}: {source}")]
+    Instructions {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     #[error("bad integer in {name}: {value}")]
     BadInt { name: &'static str, value: String },
 }
@@ -46,6 +51,12 @@ struct FileConfig {
 }
 
 impl Config {
+    /// Server instructions shown to the model. Missing file is a startup error.
+    pub fn load_instructions(&self) -> Result<String, ConfigError> {
+        let path = self.prompts_dir.join("server.md");
+        std::fs::read_to_string(&path).map_err(|source| ConfigError::Instructions { path, source })
+    }
+
     pub fn load(config_path: &Path) -> Result<Self, ConfigError> {
         let text = std::fs::read_to_string(config_path)?;
         let file: FileConfig = toml::from_str(&text)?;
