@@ -2,7 +2,7 @@
 name = "yt-rust-mcp"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "MIT"
 description = "Read-only YouTube Data API v3 MCP server"
 
