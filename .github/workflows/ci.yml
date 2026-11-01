@@ -26,8 +26,19 @@ jobs:
         run: cargo fmt --all -- --check
       - name: cargo clippy
         run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: test:unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88.0"
+      - uses: Swatinem/rust-cache@v2
       - name: cargo test
-        run: cargo test
+        run: cargo test --all-targets
 
   markdown:
     name: lint:markdown
