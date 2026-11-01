@@ -4,24 +4,25 @@ Unofficial, not affiliated with Google or YouTube.
 
 Read-only YouTube Data API v3 tools for an MCP harness. Stdio transport. API key only.
 
+**Setup:** follow [`docs/SETUP.md`](./docs/SETUP.md) (clone → `.env` → Cursor MCP).
+
 Optional experimental tool: `youtube_transcript` (off by default; set `ENABLE_MCP_TRANSCRIPT=1`).
 
 ## Run
 
 ```bash
 cp .env.example .env
-# Set YOUTUBE_API_KEY in the environment, not in git.
-export YOUTUBE_API_KEY=your-key
+# Set YOUTUBE_API_KEY in .env (the binary loads .env if present).
 cargo run --release
 ```
 
 ## Harness
 
-Command: `yt-rust-mcp`
+Command: `yt-rust-mcp` (or `cargo run --release` with `cwd` at the repo root).
 
 The process speaks MCP on stdin/stdout. Logs go to stderr.
 
-Set `YOUTUBE_API_KEY`. Optional:
+Set `YOUTUBE_API_KEY` (`.env` or the environment). Optional:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -33,18 +34,7 @@ Set `YOUTUBE_API_KEY`. Optional:
 | `ENABLE_MCP_TRANSCRIPT` | off | Set `1`/`true` to register experimental `youtube_transcript` |
 | `RUST_LOG` | `warn` | Opt-in debug: `yt_rust_mcp=debug` (stderr; no secrets/bodies) |
 
-The two path defaults are relative to the process's working directory. Run from
-the repo root, or set both to absolute paths (the Docker image does).
-
-## Docker
-
-```bash
-docker build -t yt-rust-mcp .
-docker run --rm -i -e YOUTUBE_API_KEY \
-  -v yt-rust-mcp-cache:/cache -e YT_RUST_MCP_CACHE_DIR=/cache yt-rust-mcp
-```
-
-Without the volume, the cache and daily quota counters are lost when the container exits.
+Path defaults are relative to the process working directory. Prefer repo root as `cwd`.
 
 ## Tests
 

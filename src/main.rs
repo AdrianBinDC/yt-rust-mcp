@@ -7,9 +7,13 @@ use yt_rust_mcp::server::YoutubeServer;
 use yt_rust_mcp::store::Store;
 use yt_rust_mcp::transcript::execute::build_transcript_http;
 use yt_rust_mcp::youtube::build_http;
+use yt_rust_mcp::youtube_api_key;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load `.env` if present; missing file is fine. Does not override existing env.
+    let _ = dotenvy::dotenv();
+
     // Logs → stderr only (stdio MCP uses stdout). Default warn; see default_log_filter.
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
@@ -24,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("config/default.toml"));
     let config = Config::load(&config_path)?;
-    let api_key = std::env::var("YOUTUBE_API_KEY")?;
+    let api_key = youtube_api_key().map_err(|msg| -> Box<dyn std::error::Error> { msg.into() })?;
     let store = Store::open(&config.db_path, config.sqlite_page_cache_kib)?;
     let instructions = config.load_instructions()?;
     let http = build_http(api_key).await?;
