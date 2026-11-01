@@ -1,3 +1,16 @@
+# Build junk
 target
 .git
+.worktrees/
+
+# Secrets (keep in sync with .gitignore)
 .env
+.env.local
+.env.*.local
+
+# Local-only files that must not enter build layers
+AGENTS.md
+.superpowers/
+docs/superpowers/
+.idea/
+.vscode/

@@ -59,7 +59,7 @@ No published image. From the repo root:
 docker build -t yt-rust-mcp:local .
 ```
 
-Use a short-lived stdio container for Cursor (not a long-running compose service):
+Use a short-lived stdio container for Cursor (not a long-running compose service). Pass secrets only with `--env-file` — never put `YOUTUBE_API_KEY` in the MCP JSON `env` block or as `-e YOUTUBE_API_KEY=...`. The image runs as non-root; set `--user` to your host `uid:gid` so the cache mount is writable.
 
 ```json
 {
@@ -80,6 +80,8 @@ Use a short-lived stdio container for Cursor (not a long-running compose service
         "YT_RUST_MCP_CACHE_DIR=/data",
         "-v",
         "/ABS/PATH/TO/yt-rust-mcp-cache:/data",
+        "--user",
+        "1000:1000",
         "--cap-drop",
         "ALL",
         "--security-opt",
@@ -91,4 +93,4 @@ Use a short-lived stdio container for Cursor (not a long-running compose service
 }
 ```
 
-Do not copy `.env` into the image. `--env-file` injects the key at run time. Logs stay on stderr; open Cursor’s MCP server output to read `RUST_LOG` debug lines. The volume is only for the SQLite cache and daily quota counters.
+Replace `1000:1000` with `id -u`:`id -g` on your machine. Do not copy `.env` into the image. Logs stay on stderr; open Cursor’s MCP server output to read `RUST_LOG` debug lines. The volume is only for the SQLite cache and daily quota counters.
