@@ -248,7 +248,7 @@ See [`docs/TESTING.md`](../../TESTING.md).
 
 ## 13. Dependencies
 
-Rust **1.88** (required by `rmcp` 3.8). Direct crates only:
+Rust **1.89** (covers `rmcp` 3.8 and current `rusqlite`). Direct crates only:
 
 | Crate | Pins |
 |---|---|

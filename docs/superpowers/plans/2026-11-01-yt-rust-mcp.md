@@ -6,7 +6,7 @@
 
 **Architecture:** Tool handlers validate arguments, then one call path checks SQLite, debits one counter, and GETs YouTube on a miss. Response bodies stay in SQLite. A lookup loads one row. `rmcp` speaks stdio. Logs go to stderr.
 
-**Tech Stack:** Rust 1.88, `rmcp` 3.8 (`server`, `transport-io`), `tokio`, `reqwest` (`json`, `rustls-tls`), `rusqlite` (`bundled`), `serde`/`serde_json`, `schemars` 1, `toml` 0.9, `thiserror` 2, `tracing` + `tracing-subscriber`, `jiff` (`static`), `dirs` 6.
+**Tech Stack:** Rust 1.89, `rmcp` 3.8 (`server`, `transport-io`), `tokio`, `reqwest` (`json`, `rustls-tls`), `rusqlite` (`bundled`), `serde`/`serde_json`, `schemars` 1, `toml` 0.9, `thiserror` 2, `tracing` + `tracing-subscriber`, `jiff` (`static`), `dirs` 6.
 
 ## Global Constraints
 
@@ -34,7 +34,7 @@
 
 | File | Responsibility |
 |---|---|
-| `rust-toolchain.toml` | Pin Rust 1.88 |
+| `rust-toolchain.toml` | Pin Rust 1.89 |
 | `Cargo.toml` | The crate list above |
 | `config/default.toml` | TTLs, caps, budgets |
 | `prompts/server.md` | Server instructions |
@@ -118,7 +118,7 @@ Expected: FAIL because `Config` is not defined yet. After the stub exists, FAIL 
 
 ```toml
 [toolchain]
-channel = "1.88.0"
+channel = "1.89.0"
 ```
 
 `Cargo.toml`:
@@ -128,7 +128,7 @@ channel = "1.88.0"
 name = "yt-rust-mcp"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "MIT"
 description = "Read-only YouTube Data API v3 MCP server"
 
@@ -1755,7 +1755,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 `Dockerfile`:
 
 ```dockerfile
-FROM rust:1.88-bookworm AS build
+FROM rust:1.89-bookworm AS build
 WORKDIR /src
 COPY . .
 RUN cargo build --release
