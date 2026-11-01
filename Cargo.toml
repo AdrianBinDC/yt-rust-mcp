@@ -22,5 +22,5 @@ thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 jiff = { version = "0.2", features = ["static"] }
-dirs = "6"
+dirs = "7"
 rusqlite = { version = "0.37", features = ["bundled"] }
