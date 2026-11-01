@@ -34,7 +34,7 @@ Names should mirror the API method + outcome. Keep bodies anonymized / synthetic
 | Catalog / request build | query params, `part`, pagination tokens |
 | Response parse | happy path, empty, malformed |
 | Tools | arg validation, when-to-refuse |
-| Quota ledger | debit, search bucket, soft-fail at limit |
+| Quota ledger | debit to `search` or `non_search`, soft-fail at either limit |
 | Errors | map Google error JSON → tool error text |
 
 Manual smoke against a real key is **allowed for a human**, outside the test suite (e.g. a documented `cargo run` check). It is **not** a unit test.

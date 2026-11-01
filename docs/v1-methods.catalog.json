@@ -9,7 +9,7 @@
     "query_param": "key"
   },
   "base": "https://youtube.googleapis.com/",
-  "quota_note": "Default project quota ~10k units/day for most methods; search.list has a separate ~100 calls/day bucket. Prefer videos.list / playlistItems.list over search when you already have IDs.",
+  "quota_note": "Two counters: search.list spends search (default 100/day). videos.list, channels.list, playlists.list, and playlistItems.list spend non_search (default 10000/day). A call spends only one counter. Prefer videos.list / playlistItems.list over search when you already have IDs.",
   "methods": [
     {
       "tool_hint": "youtube_search",

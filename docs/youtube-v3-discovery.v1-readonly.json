@@ -6,7 +6,7 @@
   "version": "v3",
   "revision": "20261029",
   "title": "YouTube Data API v3",
-  "description": "TRIMMED for yt-rust-mcp v1. Read-only YouTube Data API v3 surface: search.list, videos.list, channels.list, playlists.list, playlistItems.list, videoCategories.list, i18nLanguages.list, i18nRegions.list. API key auth only. No insert/update/delete. Full document: youtube-v3-discovery.full.json",
+  "description": "TRIMMED for yt-rust-mcp v1. Read-only YouTube Data API v3 surface: search.list, videos.list, channels.list, playlists.list, playlistItems.list, videoCategories.list, i18nLanguages.list, i18nRegions.list. API key auth only. No insert/update/delete. Full upstream document is not in this repo. Refresh from https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest and re-trim.",
   "documentationLink": "https://developers.google.com/youtube/",
   "protocol": "rest",
   "ownerDomain": "google.com",

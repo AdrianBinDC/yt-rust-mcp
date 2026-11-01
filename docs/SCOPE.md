@@ -52,6 +52,7 @@ State this in server instructions and tool descriptions so agents do not attempt
 ## Caching
 
 - Check **cache before** any live Google call (all v1 `*.list` methods).
+- Cache and quota counters live in **one SQLite file**. A lookup reads one row. Do not keep the cache table in memory.
 - TTLs may differ by method (search short; video and playlist-item reads medium; channel and playlist metadata long) — configured in TOML, not hard-coded magic in hot paths.
 - Tool flag: **`bypass_cache`** (boolean, default `false`). When true, skip read and **rewrite** the cache entry on success.
 - Do **not** cache transient failure bodies as successful data.
@@ -73,8 +74,9 @@ State this in server instructions and tool descriptions so agents do not attempt
 - **Settings / prompts outside code** — TOML for settings, Markdown for prompts; secrets in env
 - **Unit tests on everything** that matters — see [`TESTING.md`](./TESTING.md)
 - **Fixtures only — never live endpoints in tests.** No network to `googleapis.com` from `cargo test`
-- **Rate / quota management**: local counters; refuse or warn before blowing the budget; separate search bucket
-- **Local complexity**: O(1) for dispatch, cache lookup, quota check. Pagination is O(N) network by nature — no quadratic scans
+- **Rate / quota management**: two counters, `search` and `non_search`. If either one cannot pay for the next live page, return a tool error and do not call YouTube.
+- **Local complexity**: O(1) dispatch. Cache lookup and quota check are one primary-key read each. Pagination is O(N) network by nature — no quadratic scans
+- **Comments and docs:** concise and high-signal. A human reading the file should be able to follow what is going on. Explain the decision or the next step when the code does not already say it. Do not narrate obvious lines.
 
 ## Source-of-truth files
 
@@ -82,7 +84,6 @@ State this in server instructions and tool descriptions so agents do not attempt
 |---|---|
 | `v1-methods.catalog.json` | Implement methods with `"v1_status": "in_scope"` only |
 | `youtube-v3-discovery.v1-readonly.json` | Schemas + parameter detail for v1 methods |
-| `youtube-v3-discovery.full.json` | Upstream archive only |
 
-Upstream Discovery URL (refresh carefully; re-trim after):  
+Upstream Discovery URL (not stored in this repo; refresh carefully, then re-trim the readonly file):  
 `https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest`

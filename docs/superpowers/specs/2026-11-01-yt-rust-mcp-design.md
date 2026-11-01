@@ -1,7 +1,7 @@
 # yt-rust-mcp v1 — Design
 
 **Date:** 2026-11-01  
-**Status:** Decisions locked — pending spec review  
+**Status:** Approved — implementation plan in [`docs/superpowers/plans/2026-11-01-yt-rust-mcp.md`](../plans/2026-11-01-yt-rust-mcp.md)  
 **Repo / Docker image:** `yt-rust-mcp`  
 **Related:** [`docs/SCOPE.md`](../../SCOPE.md), [`docs/TESTING.md`](../../TESTING.md), [`docs/QUOTA.md`](../../QUOTA.md), [`docs/v1-methods.catalog.json`](../../v1-methods.catalog.json)
 
@@ -29,7 +29,7 @@ flowchart LR
   subgraph server [yt-rust-mcp]
     T[Tool layer]
     Q[Quota ledger]
-    C[Disk cache]
+    C[SQLite cache]
     H[YouTube HTTP client]
   end
   Y[(YouTube Data API v3)]
@@ -47,8 +47,8 @@ flowchart LR
 |---|---|---|
 | Config loader | Read `config/default.toml` + env overrides | filesystem, env |
 | Prompt loader | Load server/tool Markdown into MCP descriptions | config paths |
-| Quota ledger | O(1) debit/check for daily units + search bucket | config, clock |
-| Disk cache | Keyed get/put/evict; per-method TTL; size cap | config, filesystem |
+| Quota ledger | Debit/check `search` and `non_search` by primary key | SQLite, clock |
+| Disk cache | Keyed get/put/evict; load only the requested row | SQLite |
 | YouTube client | Build requests, parse JSON, map errors | reqwest, API key |
 | Tools | Validate args, orchestrate cache → quota → HTTP | all of the above |
 | MCP runtime | `rmcp` stdio server | tools, prompts |
@@ -80,6 +80,16 @@ Implement only these Discovery methods (see catalog):
 | `youtube_channels_list` | `snippet,contentDetails,statistics` |
 | `youtube_playlists_list` | `snippet,contentDetails` |
 | `youtube_playlist_items_list` | `snippet,contentDetails` |
+
+**Required selector** before any quota debit or HTTP call. If it is missing, return a tool error.
+
+| Tool | Required selector |
+|---|---|
+| `youtube_search` | none (`q` may be omitted) |
+| `youtube_videos_list` | `id` |
+| `youtube_channels_list` | one of `id`, `for_handle`, `for_username` |
+| `youtube_playlists_list` | one of `id`, `channel_id` |
+| `youtube_playlist_items_list` | `playlist_id` |
 
 **Transport:** stdio only in v1.
 
@@ -126,7 +136,7 @@ The diagram is one page. `max_pages` > 1 repeats the cache → quota → HTTP br
 
 | Arg | Default | Notes |
 |---|---|---|
-| `max_results` | 25 (cap 50) | YouTube per-page top-k |
+| `max_results` | 25 (cap 50) | YouTube per-page top-k. Not used on `youtube_videos_list` (see below). |
 | `max_pages` | **1** | Pages fetched in this tool call |
 | `page_token` | none | Resume from prior `nextPageToken` |
 | Config `max_pages_hard_cap` | **5** | Server refuses higher `max_pages` |
@@ -135,7 +145,9 @@ The diagram is one page. `max_pages` > 1 repeats the cache → quota → HTTP br
 
 **Rationale:** Default one page keeps quota predictable; power users opt into more; hard cap prevents one runaway tool call from exhausting the day.
 
-**Multiple pages:** Each YouTube HTTP page is its own cache entry (keyed like a one-page call that used that page’s `pageToken` and `maxResults`). The tool may concatenate `items` for the agent. It does **not** store one merged blob. Debit quota **once per live page**. A page served from cache costs 0. `cached` is `true` only when every page in that call was a cache hit. `nextPageToken` in the tool result is the token from the last page fetched (omit it when that page has none).
+**`youtube_videos_list`:** This tool looks up videos by `id`. YouTube rejects `maxResults` and `pageToken` on that call. Do not send either. If the agent passes `max_results`, `max_pages`, or `page_token` to this tool, refuse with a clear tool error. Do not drop the argument and call anyway.
+
+**Multiple pages:** Each YouTube HTTP page is its own cache entry (keyed like a one-page call that used that page’s `pageToken` and `maxResults`). `youtube_videos_list` is a single response, not a page walk. The tool may concatenate `items` for the agent. It does **not** store one merged blob. Debit quota **once per live page**. A page served from cache costs 0. `cached` is `true` only when every page in that call was a cache hit. `nextPageToken` in the tool result is the token from the last page fetched (omit it when that page has none).
 
 ## 7. Caching — design and rationale
 
@@ -145,9 +157,11 @@ YouTube quota is **daily** (resets ~midnight Pacific), not monthly. Duplicate ag
 
 ### Store
 
-- **On-disk** (survives process restarts)
-- Default location: platform cache dir / `yt-rust-mcp` (overridable in TOML/env)
-- **Max entries ≈ daily unit budget (~10,000)** — enough to remember about a full day’s distinct successful calls; eviction **LRU** (or equivalent) when over cap
+One SQLite file, `yt-rust-mcp.db`, in the platform cache dir / `yt-rust-mcp` (overridable in TOML/env). Crate: `rusqlite` with the `bundled` feature, so no separate database program is installed. The same file holds cache rows and the quota counters.
+
+A lookup is one primary-key read. Only that row enters memory. Do not load the table into a dictionary. Cap SQLite’s page cache at **2 MiB**.
+
+- **Max entries ≈ 10,000.** Evict the least recently used rows when over the cap. The eviction query selects keys and `last_used` only, not response bodies.
 - Maintenance: TTL expiry + cap eviction; interval / enablement via **env + TOML** (not hard-coded only in Rust)
 
 ### Cache key
@@ -157,7 +171,7 @@ One key per YouTube page:
 - Method id (for example `youtube.videos.list`)
 - Normalized query parameters that change the body YouTube would return
 
-The key is the **effective** YouTube query after defaults are applied (`part`, `maxResults` = 25 unless the agent set it) and after auth-only arguments have been refused. Sort parameter names; split `part` and comma-separated ids, sort those tokens, and rejoin. A missing `part` and the same explicit `part` share a key. Omit parameters the agent did not set and that have no default.
+The key is the **effective** YouTube query after defaults are applied (`part`, and `maxResults` = 25 on tools that accept it, unless the agent set it) and after auth-only arguments have been refused. `youtube_videos_list` keys do not include `maxResults` or `pageToken`. Sort parameter names; split `part` and comma-separated ids, sort those tokens, and rejoin. A missing `part` and the same explicit `part` share a key. Omit parameters the agent did not set and that have no default.
 
 **Include** `pageToken` and `maxResults` — they select a different page or page size.
 
@@ -190,15 +204,16 @@ All TTLs live in **TOML** so operators can tune without recompiling.
 
 ## 8. Quota
 
+Which tool spends `search` or `non_search`, and the worked example, are in [`docs/QUOTA.md`](../../QUOTA.md).
+
 - YouTube has **no** “remaining quota” endpoint on Data API v3
-- v1 tracks usage **locally** (units + separate search call count)
-- Persist those counters in `quota-ledger.json` inside the cache directory so a process restart does not zero the day’s spend
+- Persist both counters in the same SQLite file as the cache so a process restart does not zero the day’s spend. A debit is one transaction.
 - Reset both counters when the calendar day changes in `America/Los_Angeles` (YouTube’s quota day, ~midnight Pacific)
 - Prefer ID-based tools over `youtube_search` when an id is known
 - Soft-fail with a clear error before predicted exhaustion
 - Optional later: Cloud Monitoring (out of v1 scope)
 
-Defaults (overridable): `YOUTUBE_QUOTA_BUDGET=10000`, `YOUTUBE_SEARCH_BUDGET=100` (see `.env.example`).
+Defaults (overridable): `YOUTUBE_NON_SEARCH_BUDGET=10000`, `YOUTUBE_SEARCH_BUDGET=100` (see `.env.example`).
 
 ## 9. Responses and errors
 
@@ -231,24 +246,49 @@ See [`docs/TESTING.md`](../../TESTING.md).
 - **Fixtures only** under `fixtures/youtube/` — **never** live Google in `cargo test`
 - Manual human smoke with a real key is outside the suite
 
-## 13. Packaging
+## 13. Dependencies
+
+Rust **1.88** (required by `rmcp` 3.8). Direct crates only:
+
+| Crate | Pins |
+|---|---|
+| `rmcp` 3.8 | features `server`, `transport-io` |
+| `tokio` 1 | features `macros`, `rt-multi-thread` |
+| `reqwest` 0.12 | default features off; features `json`, `rustls-tls`, `blocking` |
+| `serde` 1 | feature `derive` |
+| `serde_json` 1 | |
+| `schemars` 1 | tool argument schemas |
+| `toml` 0.9 | `config/default.toml` |
+| `thiserror` 2 | tool and YouTube errors |
+| `tracing` 0.1 | |
+| `tracing-subscriber` 0.3 | features `env-filter`, `fmt`; writer is stderr |
+| `jiff` 0.2 | feature `static` so `America/Los_Angeles` works without OS tzdata |
+| `dirs` 6 | platform cache directory |
+| `rusqlite` 0.37 | feature `bundled` |
+
+No HTTP transport feature, no OAuth crate, no `.env` loader, no cache crate besides SQLite. The process reads the environment the harness already set.
+
+Env overrides, when set: `YOUTUBE_API_KEY`, `YOUTUBE_SEARCH_BUDGET`, `YOUTUBE_NON_SEARCH_BUDGET`, `YT_RUST_MCP_CACHE_DIR`, `YT_RUST_MCP_CONFIG`, `YT_RUST_MCP_PROMPTS`.
+
+## 14. Packaging
 
 - Binary / crate name aligned with repo: **`yt-rust-mcp`**
 - Docker image name: **`yt-rust-mcp`**
 - License: **MIT** (default unless changed at publish time)
 
-## 14. Complexity budget
+## 15. Complexity budget
 
-- Dispatch, cache lookup, quota check: **O(1)** intended
+- Dispatch: **O(1)**
+- Cache lookup and quota check: one primary-key read each. Do not scan the table on the hot path.
 - Fetching N pages: **O(N)** network (unavoidable); no quadratic page merging
 
-## 15. Implementation order (preview)
+## 16. Implementation order (preview)
 
 1. Cargo project + config/prompt loading  
 2. Fixture-backed YouTube client + error mapping  
-3. Disk cache + quota ledger  
+3. SQLite cache + quota ledger  
 4. MCP tools + server instructions  
 5. Docker image `yt-rust-mcp`  
 6. Docs polish / README for harness wiring  
 
-Detailed plan comes after this spec is approved.
+The task list is [`docs/superpowers/plans/2026-11-01-yt-rust-mcp.md`](../plans/2026-11-01-yt-rust-mcp.md).
