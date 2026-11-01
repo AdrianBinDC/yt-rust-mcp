@@ -19,6 +19,13 @@ fn to_args(args: &impl Serialize) -> Result<Value, rmcp::ErrorData> {
     serde_json::to_value(args).map_err(|e| rmcp::ErrorData::internal_error(e.to_string(), None))
 }
 
+fn deserialize_present<'de, D>(deserializer: D) -> Result<Option<Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Value::deserialize(deserializer).map(Some)
+}
+
 #[derive(Clone)]
 pub struct YoutubeServer {
     config: Config,
@@ -80,30 +87,68 @@ impl YoutubeServer {
 
 #[derive(Debug, Default, Serialize, Deserialize, JsonSchema)]
 struct AuthOnlyArgs {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mine: Option<bool>,
-    #[serde(rename = "forMine", skip_serializing_if = "Option::is_none")]
-    for_mine: Option<bool>,
-    #[serde(rename = "myRating", skip_serializing_if = "Option::is_none")]
-    my_rating: Option<String>,
-    #[serde(rename = "mySubscribers", skip_serializing_if = "Option::is_none")]
-    my_subscribers: Option<bool>,
-    #[serde(rename = "managedByMe", skip_serializing_if = "Option::is_none")]
-    managed_by_me: Option<bool>,
-    #[serde(rename = "forContentOwner", skip_serializing_if = "Option::is_none")]
-    for_content_owner: Option<bool>,
-    #[serde(rename = "forDeveloper", skip_serializing_if = "Option::is_none")]
-    for_developer: Option<bool>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    mine: Option<Value>,
+    #[serde(
+        rename = "forMine",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    for_mine: Option<Value>,
+    #[serde(
+        rename = "myRating",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    my_rating: Option<Value>,
+    #[serde(
+        rename = "mySubscribers",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    my_subscribers: Option<Value>,
+    #[serde(
+        rename = "managedByMe",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    managed_by_me: Option<Value>,
+    #[serde(
+        rename = "forContentOwner",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    for_content_owner: Option<Value>,
+    #[serde(
+        rename = "forDeveloper",
+        default,
+        deserialize_with = "deserialize_present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    for_developer: Option<Value>,
     #[serde(
         rename = "onBehalfOfContentOwner",
+        default,
+        deserialize_with = "deserialize_present",
         skip_serializing_if = "Option::is_none"
     )]
-    on_behalf_of_content_owner: Option<String>,
+    on_behalf_of_content_owner: Option<Value>,
     #[serde(
         rename = "onBehalfOfContentOwnerChannel",
+        default,
+        deserialize_with = "deserialize_present",
         skip_serializing_if = "Option::is_none"
     )]
-    on_behalf_of_content_owner_channel: Option<String>,
+    on_behalf_of_content_owner_channel: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -235,7 +280,7 @@ struct PlaylistItemsArgs {
 impl YoutubeServer {
     #[tool(
         name = "youtube_search",
-        description = "Find a public video, channel, or playlist by words. Do not use when you already have an id. Costs 1 search per live page."
+        description = "Use to find public videos, channels, or playlists by words. Do not use when you already have an id. Quota: 1 search per live page."
     )]
     async fn youtube_search(
         &self,
@@ -246,7 +291,7 @@ impl YoutubeServer {
 
     #[tool(
         name = "youtube_videos_list",
-        description = "Details for known video ids. Do not pass max_results, max_pages, or page_token. Costs 1 non_search per live call."
+        description = "Use for details about known video ids. Do not use for discovery or pass paging args. Quota: 1 non_search per live call."
     )]
     async fn youtube_videos_list(
         &self,
@@ -257,7 +302,7 @@ impl YoutubeServer {
 
     #[tool(
         name = "youtube_channels_list",
-        description = "Channel metadata and the uploads playlist id. Pass id, for_handle, or for_username. Costs 1 non_search per live page."
+        description = "Use for channel metadata and uploads playlist ids via id, handle, or username. Do not use to search by topic. Quota: 1 non_search per live page."
     )]
     async fn youtube_channels_list(
         &self,
@@ -268,7 +313,7 @@ impl YoutubeServer {
 
     #[tool(
         name = "youtube_playlists_list",
-        description = "Playlist metadata. Pass id or channel_id. Costs 1 non_search per live page."
+        description = "Use for playlist metadata by playlist or channel id. Do not use to list a playlist's videos. Quota: 1 non_search per live page."
     )]
     async fn youtube_playlists_list(
         &self,
@@ -279,7 +324,7 @@ impl YoutubeServer {
 
     #[tool(
         name = "youtube_playlist_items_list",
-        description = "Videos inside a playlist. Pass playlist_id. Costs 1 non_search per live page."
+        description = "Use to list videos inside a known playlist. Do not use for playlist metadata or discovery. Quota: 1 non_search per live page."
     )]
     async fn youtube_playlist_items_list(
         &self,
@@ -313,6 +358,22 @@ mod tests {
         .unwrap();
         let value = to_args(&args).unwrap();
         assert_eq!(value["forMine"], true);
+        assert!(matches!(
+            prepare(Method::Search, &value, 5),
+            Err(ToolError::AuthOnlyParam(name)) if name == "forMine"
+        ));
+    }
+
+    #[test]
+    fn null_auth_only_search_arg_survives_tool_json_path_and_is_refused() {
+        let args: SearchArgs = serde_json::from_value(serde_json::json!({
+            "q": "rust",
+            "forMine": Value::Null
+        }))
+        .unwrap();
+        let value = to_args(&args).unwrap();
+        assert!(value.get("forMine").is_some());
+        assert_eq!(value["forMine"], Value::Null);
         assert!(matches!(
             prepare(Method::Search, &value, 5),
             Err(ToolError::AuthOnlyParam(name)) if name == "forMine"
