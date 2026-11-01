@@ -97,15 +97,24 @@ fn roundtrip_tools_list(enable_transcript: bool) -> (String, Vec<String>) {
 fn starts_and_answers_initialize_and_tools_list() {
     let (instructions, names) = roundtrip_tools_list(false);
     assert!(instructions.contains("Read-only"));
-    assert!(!instructions.contains("youtube_transcript"), "{instructions}");
+    assert!(
+        !instructions.contains("youtube_transcript"),
+        "{instructions}"
+    );
     assert_eq!(names.len(), 5, "{names:?}");
-    assert!(!names.iter().any(|n| n == "youtube_transcript"), "{names:?}");
+    assert!(
+        !names.iter().any(|n| n == "youtube_transcript"),
+        "{names:?}"
+    );
 }
 
 #[test]
 fn enable_flag_registers_transcript_and_mentions_it() {
     let (instructions, names) = roundtrip_tools_list(true);
-    assert!(instructions.contains("youtube_transcript"), "{instructions}");
+    assert!(
+        instructions.contains("youtube_transcript"),
+        "{instructions}"
+    );
     assert!(instructions.contains("experimental"), "{instructions}");
     assert_eq!(names.len(), 6, "{names:?}");
     assert!(names.iter().any(|n| n == "youtube_transcript"), "{names:?}");

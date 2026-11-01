@@ -43,8 +43,8 @@ pub fn build_instructions(prompt: &ServerPrompt, enable_transcript: bool) -> Str
 
 pub fn load_server_prompt(prompts_dir: &Path) -> Result<ServerPrompt, ConfigError> {
     let path = prompts_dir.join("server.yaml");
-    let text =
-        std::fs::read_to_string(&path).map_err(|source| ConfigError::Instructions { path, source })?;
+    let text = std::fs::read_to_string(&path)
+        .map_err(|source| ConfigError::Instructions { path, source })?;
     serde_yaml::from_str(&text).map_err(|source| ConfigError::PromptYaml {
         path: prompts_dir.join("server.yaml"),
         source,
