@@ -1,0 +1,691 @@
+{
+  "product": "yt-rust-mcp",
+  "phase": "v1",
+  "mode": "read-only",
+  "v1_rule": "Implement only methods with v1_status \"in_scope\". \"deferred\" entries stay here as reference and are not v1 tools.",
+  "auth": {
+    "type": "api_key",
+    "env": "YOUTUBE_API_KEY",
+    "query_param": "key"
+  },
+  "base": "https://youtube.googleapis.com/",
+  "quota_note": "Default project quota ~10k units/day for most methods; search.list has a separate ~100 calls/day bucket. Prefer videos.list / playlistItems.list over search when you already have IDs.",
+  "methods": [
+    {
+      "tool_hint": "youtube_search",
+      "v1_status": "in_scope",
+      "api_id": "youtube.search.list",
+      "http": "GET",
+      "path": "youtube/v3/search",
+      "description": "Retrieves a list of search resources",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "pageToken": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "The *pageToken* parameter identifies a specific page in the result set that should be returned. In an API response, the nextPageToken and prevPageToken properties identify other pages that could be retrieved."
+        },
+        "q": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Textual search terms to match."
+        },
+        "publishedBefore": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on resources published before this date."
+        },
+        "videoDimension": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on 3d videos.",
+          "enum": [
+            "any",
+            "2d",
+            "3d"
+          ]
+        },
+        "videoLicense": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on the license of the videos.",
+          "enum": [
+            "any",
+            "youtube",
+            "creativeCommon"
+          ]
+        },
+        "regionCode": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Display the content as seen by viewers in this country."
+        },
+        "videoEmbeddable": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on embeddable videos.",
+          "enum": [
+            "videoEmbeddableUnspecified",
+            "any",
+            "true"
+          ]
+        },
+        "videoSyndicated": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on syndicated videos.",
+          "enum": [
+            "videoSyndicatedUnspecified",
+            "any",
+            "true"
+          ]
+        },
+        "safeSearch": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Indicates whether the search results should include restricted content as well as standard content.",
+          "enum": [
+            "safeSearchSettingUnspecified",
+            "none",
+            "moderate",
+            "strict"
+          ]
+        },
+        "videoCategoryId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on videos in a specific category."
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies a comma-separated list of one or more search resource properties that the API response will include. Set the parameter value to snippet."
+        },
+        "forContentOwner": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Search owned by a content owner."
+        },
+        "eventType": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on the livestream status of the videos.",
+          "enum": [
+            "none",
+            "upcoming",
+            "live",
+            "completed"
+          ]
+        },
+        "topicId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Restrict results to a particular topic."
+        },
+        "relevanceLanguage": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return results relevant to this language."
+        },
+        "videoPaidProductPlacement": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "",
+          "enum": [
+            "videoPaidProductPlacementUnspecified",
+            "any",
+            "true"
+          ]
+        },
+        "publishedAfter": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on resources published after this date."
+        },
+        "order": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Sort order of the results.",
+          "enum": [
+            "searchSortUnspecified",
+            "date",
+            "rating",
+            "viewCount",
+            "relevance",
+            "title",
+            "videoCount"
+          ]
+        },
+        "videoDefinition": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on the definition of the videos.",
+          "enum": [
+            "any",
+            "standard",
+            "high"
+          ]
+        },
+        "locationRadius": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on distance from the location (specified above)."
+        },
+        "location": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on location of the video"
+        },
+        "videoCaption": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on the presence of captions on the videos.",
+          "enum": [
+            "videoCaptionUnspecified",
+            "any",
+            "closedCaption",
+            "none"
+          ]
+        },
+        "channelType": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Add a filter on the channel search.",
+          "enum": [
+            "channelTypeUnspecified",
+            "any",
+            "show"
+          ]
+        },
+        "forMine": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Search for the private videos of the authenticated user."
+        },
+        "forDeveloper": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Restrict the search to only retrieve videos uploaded using the project id of the authenticated user."
+        },
+        "type": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Restrict results to a particular set of resource types from One Platform."
+        },
+        "maxResults": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "The *maxResults* parameter specifies the maximum number of items that should be returned in the result set."
+        },
+        "channelId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on resources belonging to this channelId. (Force TAP rebuild)"
+        },
+        "videoDuration": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on the duration of the videos.",
+          "enum": [
+            "videoDurationUnspecified",
+            "any",
+            "short",
+            "medium",
+            "long"
+          ]
+        },
+        "videoType": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Filter on videos of a specific type.",
+          "enum": [
+            "videoTypeUnspecified",
+            "any",
+            "movie",
+            "episode"
+          ]
+        },
+        "onBehalfOfContentOwner": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "*Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwner* parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value. Th"
+        }
+      },
+      "response_schema": "SearchListResponse"
+    },
+    {
+      "tool_hint": "youtube_videos_list",
+      "v1_status": "in_scope",
+      "api_id": "youtube.videos.list",
+      "http": "GET",
+      "path": "youtube/v3/videos",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "id": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return videos with the given ids."
+        },
+        "regionCode": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Use a chart that is specific to the specified region"
+        },
+        "chart": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the videos that are in the specified chart.",
+          "enum": [
+            "chartUnspecified",
+            "mostPopular"
+          ]
+        },
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Stands for \"host language\". Specifies the localization language of the metadata to be filled into snippet.localized. The field is filled with the default metadata if there is no localization in the specified language. The parameter value must be a language code included in the li"
+        },
+        "pageToken": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "The *pageToken* parameter identifies a specific page in the result set that should be returned. In an API response, the nextPageToken and prevPageToken properties identify other pages that could be retrieved. *Note:* This parameter is supported for use in conjunction with the [`m"
+        },
+        "myRating": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return videos liked/disliked by the authenticated user. Does not support RateType.RATED_TYPE_NONE.",
+          "enum": [
+            "none",
+            "like",
+            "dislike"
+          ]
+        },
+        "onBehalfOfContentOwner": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "*Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwner* parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value. Th"
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies a comma-separated list of one or more video resource properties that the API response will include. If the parameter identifies a property that contains child properties, the child properties will be included in the response. For example, in a video"
+        },
+        "maxResults": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "The *maxResults* parameter specifies the maximum number of items that should be returned in the result set. *Note:* This parameter is supported for use in conjunction with the [`myRating`](https://developers.google.com/youtube/data/reference/rest/v3/videos/list#myRating) and [`ch"
+        },
+        "videoCategoryId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Use chart that is specific to the specified video category"
+        },
+        "locale": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        },
+        "maxHeight": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": ""
+        },
+        "maxWidth": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "Return the player with maximum height specified in"
+        }
+      },
+      "response_schema": "VideoListResponse"
+    },
+    {
+      "tool_hint": "youtube_channels_list",
+      "v1_status": "in_scope",
+      "api_id": "youtube.channels.list",
+      "http": "GET",
+      "path": "youtube/v3/channels",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "maxResults": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "The *maxResults* parameter specifies the maximum number of items that should be returned in the result set."
+        },
+        "categoryId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the channels within the specified guide category ID."
+        },
+        "forHandle": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the channel associated with a YouTube handle."
+        },
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Stands for \"host language\". Specifies the localization language of the metadata to be filled into snippet.localized. The field is filled with the default metadata if there is no localization in the specified language. The parameter value must be a language code included in the li"
+        },
+        "mySubscribers": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Return the channels subscribed to the authenticated user"
+        },
+        "onBehalfOfContentOwner": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "*Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwner* parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value. Th"
+        },
+        "forUsername": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the channel associated with a YouTube username."
+        },
+        "id": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the channels with the specified IDs."
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies a comma-separated list of one or more channel resource properties that the API response will include. If the parameter identifies a property that contains child properties, the child properties will be included in the response. For example, in a cha"
+        },
+        "managedByMe": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Return the channels managed by the authenticated user."
+        },
+        "mine": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Return the ids of channels owned by the authenticated user."
+        },
+        "pageToken": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "The *pageToken* parameter identifies a specific page in the result set that should be returned. In an API response, the nextPageToken and prevPageToken properties identify other pages that could be retrieved."
+        }
+      },
+      "response_schema": "ChannelListResponse"
+    },
+    {
+      "tool_hint": "youtube_playlists_list",
+      "v1_status": "in_scope",
+      "api_id": "youtube.playlists.list",
+      "http": "GET",
+      "path": "youtube/v3/playlists",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "channelId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the playlists owned by the specified channel ID."
+        },
+        "maxResults": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "The *maxResults* parameter specifies the maximum number of items that should be returned in the result set."
+        },
+        "onBehalfOfContentOwnerChannel": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "This parameter can only be used in a properly [authorized request](https://developers.google.com/youtube/data/guides/authentication). *Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwnerChannel* parameter specifies the YouTube c"
+        },
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return content in specified language"
+        },
+        "onBehalfOfContentOwner": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "*Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwner* parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value. Th"
+        },
+        "id": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the playlists with the given IDs for Stubby or Apiary."
+        },
+        "mine": {
+          "type": "boolean",
+          "location": "query",
+          "required": false,
+          "description": "Return the playlists owned by the authenticated user."
+        },
+        "pageToken": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "The *pageToken* parameter identifies a specific page in the result set that should be returned. In an API response, the nextPageToken and prevPageToken properties identify other pages that could be retrieved."
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies a comma-separated list of one or more playlist resource properties that the API response will include. If the parameter identifies a property that contains child properties, the child properties will be included in the response. For example, in a pl"
+        }
+      },
+      "response_schema": "PlaylistListResponse"
+    },
+    {
+      "tool_hint": "youtube_playlist_items_list",
+      "v1_status": "in_scope",
+      "api_id": "youtube.playlistItems.list",
+      "http": "GET",
+      "path": "youtube/v3/playlistItems",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "videoId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the playlist items associated with the given video ID."
+        },
+        "pageToken": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "The *pageToken* parameter identifies a specific page in the result set that should be returned. In an API response, the nextPageToken and prevPageToken properties identify other pages that could be retrieved."
+        },
+        "id": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        },
+        "onBehalfOfContentOwner": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "*Note:* This parameter is intended exclusively for YouTube content partners. The *onBehalfOfContentOwner* parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value. Th"
+        },
+        "playlistId": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Return the playlist items within the given playlist."
+        },
+        "maxResults": {
+          "type": "integer",
+          "location": "query",
+          "required": false,
+          "description": "The *maxResults* parameter specifies the maximum number of items that should be returned in the result set."
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies a comma-separated list of one or more playlistItem resource properties that the API response will include. If the parameter identifies a property that contains child properties, the child properties will be included in the response. For example, in "
+        }
+      },
+      "response_schema": "PlaylistItemListResponse"
+    },
+    {
+      "tool_hint": "youtube_videoCategories_list",
+      "v1_status": "deferred",
+      "api_id": "youtube.videoCategories.list",
+      "http": "GET",
+      "path": "youtube/v3/videoCategories",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "id": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": "Returns the video categories with the given IDs for Stubby or Apiary."
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies the videoCategory resource properties that the API response will include. Set the parameter value to snippet."
+        },
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        },
+        "regionCode": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        }
+      },
+      "response_schema": "VideoCategoryListResponse"
+    },
+    {
+      "tool_hint": "youtube_i18nLanguages_list",
+      "v1_status": "deferred",
+      "api_id": "youtube.i18nLanguages.list",
+      "http": "GET",
+      "path": "youtube/v3/i18nLanguages",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        },
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies the i18nLanguage resource properties that the API response will include. Set the parameter value to snippet."
+        }
+      },
+      "response_schema": "I18nLanguageListResponse"
+    },
+    {
+      "tool_hint": "youtube_i18nRegions_list",
+      "v1_status": "deferred",
+      "api_id": "youtube.i18nRegions.list",
+      "http": "GET",
+      "path": "youtube/v3/i18nRegions",
+      "description": "Retrieves a list of resources, possibly filtered.",
+      "parameterOrder": [
+        "part"
+      ],
+      "parameters": {
+        "part": {
+          "type": "string",
+          "location": "query",
+          "required": true,
+          "description": "The *part* parameter specifies the i18nRegion resource properties that the API response will include. Set the parameter value to snippet."
+        },
+        "hl": {
+          "type": "string",
+          "location": "query",
+          "required": false,
+          "description": ""
+        }
+      },
+      "response_schema": "I18nRegionListResponse"
+    }
+  ]
+}

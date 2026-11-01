@@ -1,0 +1,88 @@
+# SCOPE — yt-rust-mcp v1
+
+This file is the contract for humans and coding agents. If a change is not allowed here, do not build it in v1.
+
+## One-line product
+
+A **lightweight Rust MCP server** that exposes **read-only** YouTube Data API v3 calls so agent harnesses can **discover and inspect** public YouTube videos, channels, and playlists.
+
+## In scope (v1)
+
+| MCP concern | API method | Purpose |
+|---|---|---|
+| Search | `search.list` | Find videos / channels / playlists by query |
+| Video details | `videos.list` | Metadata + stats for known video IDs |
+| Channel details | `channels.list` | Channel metadata; uploads playlist id |
+| Playlists | `playlists.list` | Playlist metadata |
+| Playlist videos | `playlistItems.list` | Items inside a playlist |
+
+**Deferred (not v1):** `videoCategories.list`, `i18nLanguages.list`, `i18nRegions.list` — useful as label decoders only; core discoverability works without them.
+
+Auth: query parameter `key` from env **`YOUTUBE_API_KEY`**.
+
+If a tool argument requires OAuth or content-owner credentials (`mine`, `forMine`, `myRating`, `mySubscribers`, `managedByMe`, `forContentOwner`, `forDeveloper`, `onBehalfOfContentOwner`, `onBehalfOfContentOwnerChannel`), **refuse** the call. Do not strip the argument and continue.
+
+Catalog: implement methods with `"v1_status": "in_scope"` only. Entries marked `"deferred"` are reference, not v1 tools. Cache key, default `part`, and per-page cache records are specified in the design doc.
+
+Transport target for the MCP: **stdio** first (harness-friendly). HTTP later is out of v1 unless explicitly reopened.
+
+## Explicitly out of scope (v1)
+
+State this in server instructions and tool descriptions so agents do not attempt it:
+
+- Any **write**: insert / update / delete / upload / rate / moderate
+- **OAuth** / private user data
+- **Captions** download via Data API (owner-only; not public “Show transcript”)
+- **Comments**, **subscriptions**, **live** streaming/chat
+- **Members** / Super Chat
+- **YouTube Analytics** / Reporting APIs
+- Media download (yt-dlp) and unofficial transcript scraping
+
+## Agent-harness discoverability rules
+
+- Server `instructions` must say: **read-only**, **API key**, **public data**, and list the tools.
+- Every tool description must include: **when to use**, **when not to use**, and a **quota hint**.
+- Prefer cheap ID-based reads (`videos.list`, `playlistItems.list`, `channels.list`) over `search.list` when the agent already has an ID.
+- Tool names should be obvious and stable (e.g. `youtube_search`, `youtube_videos_list`, `youtube_playlist_items_list`).
+
+## Product posture
+
+**Lean, fast, efficient, easy to understand.** Prefer small surfaces, obvious names, and boring control flow over clever abstractions.
+
+## Caching
+
+- Check **cache before** any live Google call (all v1 `*.list` methods).
+- TTLs may differ by method (search short; video and playlist-item reads medium; channel and playlist metadata long) — configured in TOML, not hard-coded magic in hot paths.
+- Tool flag: **`bypass_cache`** (boolean, default `false`). When true, skip read and **rewrite** the cache entry on success.
+- Do **not** cache transient failure bodies as successful data.
+
+## Errors
+
+- **Never swallow errors.** Surface them to the MCP client with a clear message; log at error/warn as appropriate.
+- Map Google error JSON to understandable tool errors; preserve enough detail to debug (reason / status) without dumping secrets.
+
+## Logging
+
+- Logs go to **stderr** only (`tracing`); never stdout (stdio MCP framing).
+- **Hot paths stay quiet** at default info/warn: no per-request chatter on cache hit / successful list.
+- **Debug mode** (e.g. `RUST_LOG=yt_rust_mcp=debug` or config) may log cache hit/miss, quota debit, and request shape — still no API keys in logs.
+
+## Engineering rails (non-negotiable for “looks good”)
+
+- **Pretty structured logs** when enabled; default = lean (see above)
+- **Settings / prompts outside code** — TOML for settings, Markdown for prompts; secrets in env
+- **Unit tests on everything** that matters — see [`TESTING.md`](./TESTING.md)
+- **Fixtures only — never live endpoints in tests.** No network to `googleapis.com` from `cargo test`
+- **Rate / quota management**: local counters; refuse or warn before blowing the budget; separate search bucket
+- **Local complexity**: O(1) for dispatch, cache lookup, quota check. Pagination is O(N) network by nature — no quadratic scans
+
+## Source-of-truth files
+
+| File | Role |
+|---|---|
+| `v1-methods.catalog.json` | Implement methods with `"v1_status": "in_scope"` only |
+| `youtube-v3-discovery.v1-readonly.json` | Schemas + parameter detail for v1 methods |
+| `youtube-v3-discovery.full.json` | Upstream archive only |
+
+Upstream Discovery URL (refresh carefully; re-trim after):  
+`https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest`
