@@ -1,12 +1,12 @@
 # yt-rust-mcp v1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Status:** Implemented on `main`. The eight tasks below are done. The code samples in each task are the original instructions. `Cargo.toml` is the version source of truth (`toml` 1.1, `dirs` 7, `rusqlite` 0.41).
 
 **Goal:** Ship a stdio MCP server that reads public YouTube Data API v3 data through five tools, with a SQLite cache and two quota counters.
 
 **Architecture:** Tool handlers validate arguments, then one call path checks SQLite, debits one counter, and GETs YouTube on a miss. Response bodies stay in SQLite. A lookup loads one row. `rmcp` speaks stdio. Logs go to stderr.
 
-**Tech Stack:** Rust 1.89, `rmcp` 3.8 (`server`, `transport-io`), `tokio`, `reqwest` (`json`, `rustls-tls`), `rusqlite` (`bundled`), `serde`/`serde_json`, `schemars` 1, `toml` 0.9, `thiserror` 2, `tracing` + `tracing-subscriber`, `jiff` (`static`), `dirs` 6.
+**Tech Stack:** Rust 1.89, `rmcp` 3.8 (`server`, `transport-io`), `tokio`, `reqwest` (`json`, `rustls-tls`, `blocking`), `rusqlite` 0.41 (`bundled`), `serde`/`serde_json`, `schemars` 1, `toml` 1.1, `thiserror` 2, `tracing` + `tracing-subscriber`, `jiff` 0.2 (`static`), `dirs` 7.
 
 ## Global Constraints
 
@@ -66,7 +66,7 @@
 - Consumes: nothing
 - Produces: `yt_rust_mcp::config::Config` and `Config::load(config_path: &Path) -> Result<Config, ConfigError>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `src/config.rs` with only the test and a stub type so the test compiles after Step 3. First add the files from Step 3's `Cargo.toml` and toolchain, then this test, then run it.
 
@@ -106,13 +106,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test env_budget_overrides_toml -- --nocapture`
 
 Expected: FAIL because `Config` is not defined yet. After the stub exists, FAIL on the assertion or on missing `load`.
 
-- [ ] **Step 3: Write the crate and the loader**
+- [x] **Step 3: Write the crate and the loader**
 
 `rust-toolchain.toml`:
 
@@ -271,13 +271,13 @@ fn main() {
 
 The stub prints to stdout. Task 8 replaces it. Do not run this stub as an MCP server.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test env_budget_overrides_toml -- --nocapture`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add rust-toolchain.toml Cargo.toml Cargo.lock config/default.toml src/lib.rs src/config.rs src/main.rs
@@ -302,7 +302,7 @@ EOF
 - Consumes: nothing
 - Produces: `ToolError`, `ToolError::from_google_body(status: u16, body: &str) -> ToolError`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `fixtures/youtube/error.quotaExceeded.json`:
 
@@ -335,13 +335,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test maps_quota_exceeded_reason -- --nocapture`
 
 Expected: FAIL to compile (`ToolError` missing)
 
-- [ ] **Step 3: Implement the mapper**
+- [x] **Step 3: Implement the mapper**
 
 ```rust
 use thiserror::Error;
@@ -393,13 +393,13 @@ impl ToolError {
 
 `src/lib.rs` add `pub mod error;`
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test maps_quota_exceeded_reason -- --nocapture`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/error.rs src/lib.rs fixtures/youtube/error.quotaExceeded.json fixtures/youtube/error.forbidden.json
@@ -427,7 +427,7 @@ EOF
   - `pub fn cache_key(method: Method, query: &BTreeMap<String, String>) -> String`
   - `pub fn ttl_seconds(method: Method, ttl: &crate::config::TtlSeconds) -> i64`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```rust
 #[cfg(test)]
@@ -477,13 +477,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test --lib youtube -- --nocapture`
 
 Expected: FAIL to compile
 
-- [ ] **Step 3: Implement prepare and cache_key**
+- [x] **Step 3: Implement prepare and cache_key**
 
 ```rust
 use crate::config::TtlSeconds;
@@ -733,13 +733,13 @@ pub fn ttl_seconds(method: Method, ttl: &TtlSeconds) -> i64 {
 
 `src/lib.rs` add `pub mod youtube;`
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test --lib youtube:: -- --nocapture`
 
 Expected: PASS for the four tests in this task
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/youtube.rs src/lib.rs
@@ -768,7 +768,7 @@ EOF
   - `Store::remaining(&self, counter, budget, today: &str) -> Result<i64, ToolError>`
   - `Store::debit(&self, counter, cost, budget, today: &str) -> Result<(), ToolError>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```rust
 #[cfg(test)]
@@ -813,13 +813,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test --lib store:: -- --nocapture`
 
 Expected: FAIL to compile
 
-- [ ] **Step 3: Implement the store**
+- [x] **Step 3: Implement the store**
 
 ```rust
 use crate::error::ToolError;
@@ -989,13 +989,13 @@ A day change returns spent 0 from `spent_today_tx` until the next debit writes t
 
 `src/lib.rs` add `pub mod store;`
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test --lib store:: -- --nocapture`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/store.rs src/lib.rs
@@ -1026,7 +1026,7 @@ EOF
 
 The returned JSON is the YouTube body plus `cached` (bool) and, when a further page exists, `quota_note` (string). `nextPageToken` stays the YouTube field.
 
-- [ ] **Step 1: Write fixtures and the failing test**
+- [x] **Step 1: Write fixtures and the failing test**
 
 `fixtures/youtube/search.list.ok.json`:
 
@@ -1110,13 +1110,13 @@ mod tests {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test --lib call:: -- --nocapture`
 
 Expected: FAIL to compile
 
-- [ ] **Step 3: Implement execute**
+- [x] **Step 3: Implement execute**
 
 Add the trait to `src/youtube.rs`:
 
@@ -1228,13 +1228,13 @@ pub fn execute(
 
 `src/lib.rs` add `pub mod call;`
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test --lib call:: -- --nocapture`
 
 Expected: PASS. `second_identical_search` shows one HTTP call and `search` spent 1. `two_pages` shows `search` spent 2.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/call.rs src/youtube.rs src/lib.rs fixtures/youtube/search.list.ok.json fixtures/youtube/search.list.page2.json fixtures/youtube/videos.list.ok.json
@@ -1256,7 +1256,7 @@ EOF
 - Consumes: `YoutubeHttp`, `Method`
 - Produces: `ReqwestYoutube { api_key: String, http: reqwest::Client }` implementing `YoutubeHttp`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```rust
 #[test]
@@ -1269,13 +1269,13 @@ fn live_client_sends_the_key_and_does_not_return_it() {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test live_client_sends_the_key -- --nocapture`
 
 Expected: FAIL to compile
 
-- [ ] **Step 3: Implement the client**
+- [x] **Step 3: Implement the client**
 
 ```rust
 pub struct ReqwestYoutube {
@@ -1337,13 +1337,13 @@ impl YoutubeHttp for ReqwestYoutube {
 
 Do not log `url`. Debug logs may log `method.api_name()` and the query map, which has no key.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `cargo test live_client_sends_the_key -- --nocapture`
 
 Expected: PASS. This test does not open a socket.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/youtube.rs Cargo.toml Cargo.lock
@@ -1372,7 +1372,7 @@ EOF
 - Consumes: `execute`, `prepare`, `Config`, `Store`, `ReqwestYoutube`
 - Produces: `YoutubeServer` implementing the five tools and `ServerHandler`
 
-- [ ] **Step 1: Write the prompt files and a failing test**
+- [x] **Step 1: Write the prompt files and a failing test**
 
 `prompts/server.md`:
 
@@ -1445,13 +1445,13 @@ mod tests {
 
 Put this test in `src/server.rs`.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test prompts_name_the_rules -- --nocapture`
 
 Expected: FAIL until `src/server.rs` is a module. After adding the module with only the test, PASS is acceptable for this assertion because the fixtures are `include_str`. The tool wiring is verified by `cargo build` in Step 4.
 
-- [ ] **Step 3: Implement the server**
+- [x] **Step 3: Implement the server**
 
 `src/server.rs` (keep the test from Step 1):
 
@@ -1654,13 +1654,13 @@ impl ServerHandler for YoutubeServer {
 
 `rmcp` 3.8 `ServerConfig` has a public `instructions: Option<String>` field. `get_info` sets it from `prompts/server.md` read at startup. SQLite and the blocking HTTP client run inside `spawn_blocking` so they do not sit on the tokio worker.
 
-- [ ] **Step 4: Run the test and the build**
+- [x] **Step 4: Run the test and the build**
 
 Run: `cargo test prompts_name_the_rules -- --nocapture && cargo build`
 
 Expected: test PASS and build finishes with no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add prompts src/server.rs src/lib.rs
@@ -1685,7 +1685,7 @@ EOF
 - Consumes: `Config::load`, `Store::open`, `ReqwestYoutube::new`, `YoutubeServer::new`
 - Produces: a binary that speaks MCP on stdio and logs to stderr
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 There is no socket test. Assert the binary's logging helper would target stderr by a pure function:
 
@@ -1698,13 +1698,13 @@ fn default_log_filter_is_warn() {
 
 Put `default_log_filter` in `src/lib.rs` for this test.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `cargo test default_log_filter_is_warn -- --nocapture`
 
 Expected: FAIL to compile
 
-- [ ] **Step 3: Implement main, Docker, and README**
+- [x] **Step 3: Implement main, Docker, and README**
 
 `src/lib.rs`:
 
@@ -1813,7 +1813,7 @@ docker run --rm -i -e YOUTUBE_API_KEY yt-rust-mcp
 `cargo test` uses fixtures. It does not call YouTube.
 ```
 
-- [ ] **Step 4: Run the test and the build**
+- [x] **Step 4: Run the test and the build**
 
 Run: `cargo test --offline && cargo build`
 
@@ -1821,7 +1821,7 @@ If `--offline` fails because the registry is needed, run `cargo test` once onlin
 
 Expected: all tests PASS and the binary builds.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main.rs src/lib.rs Dockerfile .dockerignore README.md

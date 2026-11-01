@@ -1,7 +1,7 @@
 # yt-rust-mcp v1 — Design
 
 **Date:** 2026-11-01  
-**Status:** Approved — implementation plan in [`docs/superpowers/plans/2026-11-01-yt-rust-mcp.md`](../plans/2026-11-01-yt-rust-mcp.md)  
+**Status:** Implemented. Task record: [`docs/superpowers/plans/2026-11-01-yt-rust-mcp.md`](../plans/2026-11-01-yt-rust-mcp.md).  
 **Repo / Docker image:** `yt-rust-mcp`  
 **Related:** [`docs/SCOPE.md`](../../SCOPE.md), [`docs/TESTING.md`](../../TESTING.md), [`docs/QUOTA.md`](../../QUOTA.md), [`docs/v1-methods.catalog.json`](../../v1-methods.catalog.json)
 
@@ -17,7 +17,7 @@ Ship a **lean Rust MCP server** that wraps **read-only** YouTube Data API v3 so 
 - Obvious tool names and copy aimed at **agent discoverability**
 - Settings in **TOML**, prompts in **Markdown**, secrets in **env**
 - Cache-first; never burn quota on duplicate identical reads in a day when avoidable
-- Never swallow errors; quiet logs on hot paths unless debug
+- Never swallow errors. Hot paths stay quiet. The default log filter is `warn`.
 
 ## 3. Architecture
 
@@ -55,7 +55,7 @@ flowchart LR
 
 ## 4. API surface (v1)
 
-Implement only these Discovery methods (see catalog):
+v1 exposes these Discovery methods (see catalog):
 
 | Tool (stable name) | API | Purpose |
 |---|---|---|
@@ -65,7 +65,7 @@ Implement only these Discovery methods (see catalog):
 | `youtube_playlists_list` | `playlists.list` | Playlist metadata |
 | `youtube_playlist_items_list` | `playlistItems.list` | Videos in a playlist |
 
-**Deferred:** `videoCategories`, `i18nLanguages`, `i18nRegions` — agents rarely need id→label tables for discoverability; add later if needed. They stay in [`docs/v1-methods.catalog.json`](../../v1-methods.catalog.json) with `"v1_status": "deferred"`. Implement only methods marked `"v1_status": "in_scope"`. Stable tool name for playlist items is `youtube_playlist_items_list` (catalog `tool_hint` matches).
+**Deferred:** `videoCategories`, `i18nLanguages`, `i18nRegions` — agents rarely need id→label tables for discoverability. They stay in [`docs/v1-methods.catalog.json`](../../v1-methods.catalog.json) with `"v1_status": "deferred"` and are not tools. Stable tool name for playlist items is `youtube_playlist_items_list` (catalog `tool_hint` matches).
 
 **Auth:** `YOUTUBE_API_KEY` as query `key`. No OAuth in v1.
 
@@ -162,7 +162,7 @@ One SQLite file, `yt-rust-mcp.db`, in the platform cache dir / `yt-rust-mcp` (ov
 A lookup is one primary-key read. Only that row enters memory. Do not load the table into a dictionary. Cap SQLite’s page cache at **2 MiB**.
 
 - **Max entries ≈ 10,000.** Evict the least recently used rows when over the cap. The eviction query selects keys and `last_used` only, not response bodies.
-- Maintenance: TTL expiry + cap eviction; interval / enablement via **env + TOML** (not hard-coded only in Rust)
+- An expired row is deleted the next time that key is read. A write that pushes the table over the cap deletes the extra least-recently-used keys in that same write. There is no background sweeper.
 
 ### Cache key
 
@@ -224,7 +224,7 @@ Defaults (overridable): `YOUTUBE_NON_SEARCH_BUDGET=10000`, `YOUTUBE_SEARCH_BUDGE
 ## 10. Config and prompts layout
 
 ```
-config/default.toml          # TTLs, caps, budgets, paths, log defaults
+config/default.toml          # TTLs, caps, budgets; optional cache_dir
 prompts/server.md            # MCP server instructions (read-only, tools list)
 prompts/tools/*.md           # when to use / when not / quota hint
 .env                         # secrets (gitignored)
@@ -235,8 +235,8 @@ AGENTS.md                    # local only (gitignored)
 ## 11. Logging
 
 - `tracing` → **stderr** only
-- Default: lean (errors/warns; no per-hit spam)
-- Debug: cache hit/miss, debit, request shape — never the API key
+- Default filter is `warn` (`RUST_LOG` overrides it)
+- The server does not log each cache hit, debit, or request. It also does not log the API key.
 
 ## 12. Testing
 
@@ -258,13 +258,13 @@ Rust **1.89** (covers `rmcp` 3.8 and current `rusqlite`). Direct crates only:
 | `serde` 1 | feature `derive` |
 | `serde_json` 1 | |
 | `schemars` 1 | tool argument schemas |
-| `toml` 0.9 | `config/default.toml` |
+| `toml` 1.1 | `config/default.toml` |
 | `thiserror` 2 | tool and YouTube errors |
 | `tracing` 0.1 | |
 | `tracing-subscriber` 0.3 | features `env-filter`, `fmt`; writer is stderr |
 | `jiff` 0.2 | feature `static` so `America/Los_Angeles` works without OS tzdata |
-| `dirs` 6 | platform cache directory |
-| `rusqlite` 0.37 | feature `bundled` |
+| `dirs` 7 | platform cache directory |
+| `rusqlite` 0.41 | feature `bundled` |
 
 No HTTP transport feature, no OAuth crate, no `.env` loader, no cache crate besides SQLite. The process reads the environment the harness already set.
 
@@ -282,13 +282,15 @@ Env overrides, when set: `YOUTUBE_API_KEY`, `YOUTUBE_SEARCH_BUDGET`, `YOUTUBE_NO
 - Cache lookup and quota check: one primary-key read each. Do not scan the table on the hot path.
 - Fetching N pages: **O(N)** network (unavoidable); no quadratic page merging
 
-## 16. Implementation order (preview)
+## 16. Implementation order
 
-1. Cargo project + config/prompt loading  
-2. Fixture-backed YouTube client + error mapping  
-3. SQLite cache + quota ledger  
-4. MCP tools + server instructions  
-5. Docker image `yt-rust-mcp`  
-6. Docs polish / README for harness wiring  
+Done, in this order:
+
+1. Cargo project + config/prompt loading
+2. Fixture-backed YouTube client + error mapping
+3. SQLite cache + quota ledger
+4. MCP tools + server instructions
+5. Docker image `yt-rust-mcp`
+6. README for harness wiring
 
 The task list is [`docs/superpowers/plans/2026-11-01-yt-rust-mcp.md`](../plans/2026-11-01-yt-rust-mcp.md).

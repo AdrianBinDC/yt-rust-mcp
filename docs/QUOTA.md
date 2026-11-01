@@ -21,6 +21,6 @@ Deferred catalog methods (`videoCategories.list`, `i18nLanguages.list`, `i18nReg
 2. **Example:** one search, then three video lookups. `search` 100 → 99. `non_search` 10,000 → 9,997. After 100 searches, `search` is done for the day even if `non_search` is still full.
 3. **Failed calls can still cost quota.** Validate inputs before HTTP.
 4. **Pagination multiplies cost.** Each page of `playlistItems.list` / `search.list` is another call.
-5. Server should expose remaining budget estimates in logs (and optionally in tool results) so harnesses can stop early.
+5. A call that cannot pay returns a tool error naming the counter and how many calls remain. A successful result does not include that balance. When another page exists, the result includes `quota_note`.
 
-Implementers: put costs next to each tool description; refuse or soft-fail when local counters say the budget is gone.
+Tool descriptions name which counter they spend. The server refuses the call when the local counter cannot pay.

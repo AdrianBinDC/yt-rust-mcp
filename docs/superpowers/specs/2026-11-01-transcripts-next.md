@@ -1,7 +1,7 @@
 # Next: public transcripts (not official Data API)
 
-**Status:** Parked for tomorrow — design before code  
-**Depends on:** v1 MCP tools already shipped (`feature/yt-rust-mcp-v1`)
+**Status:** Parked. Design before code. Not started.  
+**Depends on:** v1 MCP tools, which are on `main`.
 
 ## Why
 
