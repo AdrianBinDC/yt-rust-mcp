@@ -40,6 +40,8 @@ Point an MCP client at a short-lived stdio container (`docker run -i --rm`). Pas
         "run",
         "-i",
         "--rm",
+        "--name",
+        "yt-rust-mcp",
         "--env-file",
         "/ABS/PATH/TO/yt-rust-mcp/.env",
         "-e",

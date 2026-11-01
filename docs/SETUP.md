@@ -70,6 +70,8 @@ Use a short-lived stdio container for Cursor (not a long-running compose service
         "run",
         "-i",
         "--rm",
+        "--name",
+        "yt-rust-mcp",
         "--env-file",
         "/ABS/PATH/TO/yt-rust-mcp/.env",
         "-e",
