@@ -16,3 +16,6 @@ Cargo.lock.bak
 .vscode/
 *.swp
 .DS_Store
+
+# Local git worktrees
+.worktrees/
