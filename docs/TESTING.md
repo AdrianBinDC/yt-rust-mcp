@@ -8,33 +8,30 @@
 4. **Quota tests are local.** Assert counters and refusal behavior; do not query Cloud Monitoring in unit tests.
 5. **Deterministic.** Fixed clocks / budgets where time or daily reset matters.
 
-## Fixture layout (planned)
+## Fixture layout
 
 ```
-fixtures/
-  youtube/
-    search.list.ok.json
-    videos.list.ok.json
-    videos.list.empty.json
-    channels.list.ok.json
-    playlists.list.ok.json
-    playlistItems.list.ok.json
-    playlistItems.list.page2.json
-    error.quotaExceeded.json
-    error.rateLimitExceeded.json
-    error.forbidden.json
+fixtures/youtube/
+  search.list.ok.json
+  search.list.page2.json
+  videos.list.ok.json
+  error.quotaExceeded.json
+  error.forbidden.json
 ```
 
-Names should mirror the API method + outcome. Keep bodies anonymized / synthetic where possible (no need for real channel secrets).
+Names mirror the API method and the outcome. Bodies are synthetic.
 
-## What “everything” means in practice
+`search.list.ok.json`, `search.list.page2.json`, and `videos.list.ok.json` feed the call-path tests. `error.quotaExceeded.json` feeds the Google error mapper. `error.forbidden.json` is saved and is not loaded by a test.
 
-| Area | Must have fixture-backed tests |
+## What the suite covers
+
+| Area | Covered now |
 |---|---|
-| Catalog / request build | query params, `part`, pagination tokens |
-| Response parse | happy path, empty, malformed |
-| Tools | arg validation, when-to-refuse |
-| Quota ledger | debit to `search` or `non_search`, soft-fail at either limit |
-| Errors | map Google error JSON → tool error text |
+| Request build | default `part`, page size 25, auth-only and unknown arguments, `videos.list` paging refusal |
+| Call path | a second identical search is a cache hit and does not debit again; two pages merge `items` and debit twice |
+| Quota ledger | debit stops at the budget, resets on a new day, and `search` does not change `non_search` |
+| Errors | `quotaExceeded` JSON maps to status and reason; the message does not contain an API key |
+| Tools | refusal still happens after the MCP JSON path; prompt files name the read-only rules |
+| Process | default log filter is `warn`; stdio answers initialize and `tools/list` without calling YouTube |
 
-Manual smoke against a real key is **allowed for a human**, outside the test suite (e.g. a documented `cargo run` check). It is **not** a unit test.
+Manual smoke against a real key is **allowed for a human**, outside the test suite (a `cargo run` check). It is **not** a unit test.

@@ -1,6 +1,6 @@
 # SCOPE — yt-rust-mcp v1
 
-This file is the contract for humans and coding agents. If a change is not allowed here, do not build it in v1.
+This file is the contract for humans and coding agents. v1 of this contract is implemented. If a change is not allowed here, do not add it.
 
 ## One-line product
 
@@ -22,7 +22,7 @@ Auth: query parameter `key` from env **`YOUTUBE_API_KEY`**.
 
 If a tool argument requires OAuth or content-owner credentials (`mine`, `forMine`, `myRating`, `mySubscribers`, `managedByMe`, `forContentOwner`, `forDeveloper`, `onBehalfOfContentOwner`, `onBehalfOfContentOwnerChannel`), **refuse** the call. Do not strip the argument and continue.
 
-Catalog: implement methods with `"v1_status": "in_scope"` only. Entries marked `"deferred"` are reference, not v1 tools. Cache key, default `part`, and per-page cache records are specified in the design doc.
+The v1 tools are the catalog methods with `"v1_status": "in_scope"`. Entries marked `"deferred"` are reference, not tools. Cache key, default `part`, and per-page cache records are specified in the design doc.
 
 Transport target for the MCP: **stdio** first (harness-friendly). HTTP later is out of v1 unless explicitly reopened.
 
@@ -67,12 +67,11 @@ State this in server instructions and tool descriptions so agents do not attempt
 ## Logging
 
 - Logs go to **stderr** only (`tracing`); never stdout (stdio MCP framing).
-- **Hot paths stay quiet** at default info/warn: no per-request chatter on cache hit / successful list.
-- **Debug mode** (e.g. `RUST_LOG=yt_rust_mcp=debug` or config) may log cache hit/miss, quota debit, and request shape — still no API keys in logs.
+- Default filter is `warn`. `RUST_LOG` overrides it. The server does not log each cache hit or successful call, and it does not log the API key.
 
 ## Engineering rails (non-negotiable for “looks good”)
 
-- **Pretty structured logs** when enabled; default = lean (see above)
+- **Logs** are `tracing` text on stderr. Default filter is `warn` (see above).
 - **Settings / prompts outside code** — TOML for settings, Markdown for prompts; secrets in env
 - **Unit tests on everything** that matters — see [`TESTING.md`](./TESTING.md)
 - **Fixtures only — never live endpoints in tests.** No network to `googleapis.com` from `cargo test`
@@ -84,7 +83,7 @@ State this in server instructions and tool descriptions so agents do not attempt
 
 | File | Role |
 |---|---|
-| `v1-methods.catalog.json` | Implement methods with `"v1_status": "in_scope"` only |
+| `v1-methods.catalog.json` | v1 tools are `"v1_status": "in_scope"` only |
 | `youtube-v3-discovery.v1-readonly.json` | Schemas + parameter detail for v1 methods |
 
 Upstream Discovery URL (not stored in this repo; refresh carefully, then re-trim the readonly file):  
