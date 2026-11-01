@@ -78,8 +78,38 @@ impl YoutubeServer {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize, JsonSchema)]
+struct AuthOnlyArgs {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mine: Option<bool>,
+    #[serde(rename = "forMine", skip_serializing_if = "Option::is_none")]
+    for_mine: Option<bool>,
+    #[serde(rename = "myRating", skip_serializing_if = "Option::is_none")]
+    my_rating: Option<String>,
+    #[serde(rename = "mySubscribers", skip_serializing_if = "Option::is_none")]
+    my_subscribers: Option<bool>,
+    #[serde(rename = "managedByMe", skip_serializing_if = "Option::is_none")]
+    managed_by_me: Option<bool>,
+    #[serde(rename = "forContentOwner", skip_serializing_if = "Option::is_none")]
+    for_content_owner: Option<bool>,
+    #[serde(rename = "forDeveloper", skip_serializing_if = "Option::is_none")]
+    for_developer: Option<bool>,
+    #[serde(
+        rename = "onBehalfOfContentOwner",
+        skip_serializing_if = "Option::is_none"
+    )]
+    on_behalf_of_content_owner: Option<String>,
+    #[serde(
+        rename = "onBehalfOfContentOwnerChannel",
+        skip_serializing_if = "Option::is_none"
+    )]
+    on_behalf_of_content_owner_channel: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct SearchArgs {
+    #[serde(flatten)]
+    auth_only: AuthOnlyArgs,
     /// Search words.
     #[serde(skip_serializing_if = "Option::is_none")]
     q: Option<String>,
@@ -116,6 +146,8 @@ struct SearchArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct VideosArgs {
+    #[serde(flatten)]
+    auth_only: AuthOnlyArgs,
     /// Comma-separated video ids.
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
@@ -135,6 +167,8 @@ struct VideosArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct ChannelsArgs {
+    #[serde(flatten)]
+    auth_only: AuthOnlyArgs,
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,6 +191,8 @@ struct ChannelsArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PlaylistsArgs {
+    #[serde(flatten)]
+    auth_only: AuthOnlyArgs,
     #[serde(skip_serializing_if = "Option::is_none")]
     id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -177,6 +213,8 @@ struct PlaylistsArgs {
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 struct PlaylistItemsArgs {
+    #[serde(flatten)]
+    auth_only: AuthOnlyArgs,
     #[serde(skip_serializing_if = "Option::is_none")]
     playlist_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -267,8 +305,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn auth_only_search_arg_survives_tool_json_path_and_is_refused() {
+        let args: SearchArgs = serde_json::from_value(serde_json::json!({
+            "q": "rust",
+            "forMine": true
+        }))
+        .unwrap();
+        let value = to_args(&args).unwrap();
+        assert_eq!(value["forMine"], true);
+        assert!(matches!(
+            prepare(Method::Search, &value, 5),
+            Err(ToolError::AuthOnlyParam(name)) if name == "forMine"
+        ));
+    }
+
+    #[test]
     fn unset_args_are_omitted_so_videos_paging_check_passes() {
         let args = VideosArgs {
+            auth_only: AuthOnlyArgs::default(),
             id: Some("abc".into()),
             part: None,
             hl: None,
