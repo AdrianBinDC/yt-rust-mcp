@@ -53,4 +53,46 @@ Claude Desktop uses its own config file and JSON shape; point it at the same com
 
 ## Optional local Docker
 
-You can `docker build` locally from the Dockerfile. That is optional and not required for setup above.
+No published image. From the repo root:
+
+```bash
+docker build -t yt-rust-mcp:local .
+```
+
+Use a short-lived stdio container for Cursor (not a long-running compose service). Pass secrets only with `--env-file` — never put `YOUTUBE_API_KEY` in the MCP JSON `env` block or as `-e YOUTUBE_API_KEY=...`. The image runs as non-root; set `--user` to your host `uid:gid` so the cache mount is writable.
+
+```json
+{
+  "mcpServers": {
+    "yt-rust-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--name",
+        "yt-rust-mcp",
+        "--env-file",
+        "/ABS/PATH/TO/yt-rust-mcp/.env",
+        "-e",
+        "ENABLE_MCP_TRANSCRIPT=1",
+        "-e",
+        "RUST_LOG=yt_rust_mcp=debug",
+        "-e",
+        "YT_RUST_MCP_CACHE_DIR=/data",
+        "-v",
+        "/ABS/PATH/TO/yt-rust-mcp-cache:/data",
+        "--user",
+        "1000:1000",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "yt-rust-mcp:local"
+      ]
+    }
+  }
+}
+```
+
+Replace `1000:1000` with `id -u`:`id -g` on your machine. Do not copy `.env` into the image. Logs stay on stderr; open Cursor’s MCP server output to read `RUST_LOG` debug lines. The volume is only for the SQLite cache and daily quota counters.
