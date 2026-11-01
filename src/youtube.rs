@@ -69,7 +69,13 @@ pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest
         }
     }
     if method == Method::Videos {
-        for name in ["max_results", "max_pages", "page_token"] {
+        for name in [
+            "max_results",
+            "maxResults",
+            "max_pages",
+            "page_token",
+            "pageToken",
+        ] {
             if obj.contains_key(name) {
                 return Err(ToolError::VideosListPaging(name.to_string()));
             }
@@ -102,21 +108,13 @@ pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest
     copy_csv_id(&obj, &mut query, "id");
     copy_string(&obj, &mut query, "forHandle");
     // Tool args use snake_case. YouTube uses the names below.
-    if let Some(handle) = obj.get("for_handle").and_then(|v| v.as_str()) {
-        query.insert("forHandle".to_string(), handle.to_string());
-    }
+    copy_aliased_string(&obj, &mut query, "for_handle", "forHandle");
     copy_string(&obj, &mut query, "forUsername");
-    if let Some(name) = obj.get("for_username").and_then(|v| v.as_str()) {
-        query.insert("forUsername".to_string(), name.to_string());
-    }
+    copy_aliased_string(&obj, &mut query, "for_username", "forUsername");
     copy_string(&obj, &mut query, "channelId");
-    if let Some(id) = obj.get("channel_id").and_then(|v| v.as_str()) {
-        query.insert("channelId".to_string(), id.to_string());
-    }
+    copy_aliased_string(&obj, &mut query, "channel_id", "channelId");
     copy_string(&obj, &mut query, "playlistId");
-    if let Some(id) = obj.get("playlist_id").and_then(|v| v.as_str()) {
-        query.insert("playlistId".to_string(), id.to_string());
-    }
+    copy_aliased_string(&obj, &mut query, "playlist_id", "playlistId");
     copy_string(&obj, &mut query, "type");
     copy_string(&obj, &mut query, "order");
     copy_string(&obj, &mut query, "publishedAfter");
@@ -227,6 +225,19 @@ fn copy_string(
     }
 }
 
+fn copy_aliased_string(
+    obj: &serde_json::Map<String, Value>,
+    query: &mut BTreeMap<String, String>,
+    source: &str,
+    target: &str,
+) {
+    if let Some(v) = obj.get(source).and_then(|v| v.as_str()) {
+        if !v.is_empty() {
+            query.insert(target.to_string(), v.to_string());
+        }
+    }
+}
+
 fn copy_csv_id(
     obj: &serde_json::Map<String, Value>,
     query: &mut BTreeMap<String, String>,
@@ -289,6 +300,26 @@ mod tests {
         let raw = json!({"id": "abc", "max_results": 10});
         let err = prepare(Method::Videos, &raw, 5).unwrap_err();
         assert!(err.to_string().contains("max_results"));
+    }
+
+    #[test]
+    fn videos_list_refuses_camel_case_paging_args() {
+        for name in ["maxResults", "pageToken"] {
+            let mut raw = json!({"id": "abc"});
+            raw.as_object_mut()
+                .unwrap()
+                .insert(name.to_string(), json!("unexpected"));
+            let err = prepare(Method::Videos, &raw, 5).unwrap_err();
+            assert!(err.to_string().contains(name));
+        }
+    }
+
+    #[test]
+    fn empty_playlist_selector_is_missing() {
+        for raw in [json!({"playlist_id": ""}), json!({"playlistId": ""})] {
+            let err = prepare(Method::PlaylistItems, &raw, 5).unwrap_err();
+            assert!(matches!(err, ToolError::MissingSelector("playlist_id")));
+        }
     }
 
     #[test]
