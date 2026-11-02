@@ -122,3 +122,24 @@ Prefer HTTP (`--http`) for a shared long-lived container. Short-lived stdio cont
 ```
 
 Replace `1000:1000` with `id -u`:`id -g` on your machine. Do not copy `.env` into the image. Logs stay on stderr; open Cursor’s MCP server output to read `RUST_LOG` debug lines. The volume is only for the SQLite cache and daily quota counters.
+
+## Environment
+
+Set `YOUTUBE_API_KEY` (`.env` or the environment). Optional:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `YOUTUBE_SEARCH_BUDGET` | 100 | Daily search-call budget |
+| `YOUTUBE_NON_SEARCH_BUDGET` | 10000 | Daily non-search budget |
+| `YT_RUST_MCP_CACHE_DIR` | OS cache dir | Where the SQLite cache and quota counters live |
+| `YT_RUST_MCP_CONFIG` | `config/default.toml` | Config file. Startup fails if unreadable |
+| `YT_RUST_MCP_PROMPTS` | `prompts` | Directory holding `server.yaml`. Startup fails if missing |
+| `ENABLE_MCP_TRANSCRIPT` | off | Set `1`/`true` to register experimental `youtube_transcript` |
+| `DEFAULT_TRANSCRIPT_LANGUAGE` | unset | Prefer this caption language when the tool omits `lang` |
+| `RUST_LOG` | `warn` | Opt-in debug: `yt_rust_mcp=debug` (stderr; no secrets/bodies) |
+
+Path defaults are relative to the process working directory. Prefer repo root as `cwd`.
+
+## Tests
+
+`cargo test` uses fixtures. It does not call YouTube.
