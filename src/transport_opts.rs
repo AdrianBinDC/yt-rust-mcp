@@ -16,7 +16,11 @@ pub enum TransportMode {
 /// `YT_RUST_MCP_BIND` overrides the bind string when HTTP is selected.
 /// `--http` wins over `--stdio`. Explicit `--stdio` with HTTP env still forces stdio
 /// unless `--http` is set.
-pub fn resolve_transport(http_flag: bool, stdio_flag: bool, bind_flag: Option<String>) -> TransportMode {
+pub fn resolve_transport(
+    http_flag: bool,
+    stdio_flag: bool,
+    bind_flag: Option<String>,
+) -> TransportMode {
     let env_http = env_truthy("YT_RUST_MCP_HTTP");
     let use_http = http_flag || (env_http && !stdio_flag);
     if !use_http {
@@ -24,7 +28,11 @@ pub fn resolve_transport(http_flag: bool, stdio_flag: bool, bind_flag: Option<St
     }
     let bind = bind_flag
         .filter(|s| !s.is_empty())
-        .or_else(|| std::env::var("YT_RUST_MCP_BIND").ok().filter(|s| !s.is_empty()))
+        .or_else(|| {
+            std::env::var("YT_RUST_MCP_BIND")
+                .ok()
+                .filter(|s| !s.is_empty())
+        })
         .unwrap_or_else(|| DEFAULT_HTTP_BIND.to_string());
     TransportMode::Http { bind }
 }
@@ -56,10 +64,7 @@ mod tests {
     fn default_is_stdio() {
         let _g = ENV_LOCK.lock().unwrap();
         clear_http_env();
-        assert_eq!(
-            resolve_transport(false, false, None),
-            TransportMode::Stdio
-        );
+        assert_eq!(resolve_transport(false, false, None), TransportMode::Stdio);
     }
 
     #[test]
@@ -120,10 +125,7 @@ mod tests {
         let _g = ENV_LOCK.lock().unwrap();
         clear_http_env();
         std::env::set_var("YT_RUST_MCP_HTTP", "1");
-        assert_eq!(
-            resolve_transport(false, true, None),
-            TransportMode::Stdio
-        );
+        assert_eq!(resolve_transport(false, true, None), TransportMode::Stdio);
         clear_http_env();
     }
 

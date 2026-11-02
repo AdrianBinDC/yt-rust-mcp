@@ -12,11 +12,7 @@ fn free_port() -> u16 {
 }
 
 fn spawn_http(port: u16) -> (Child, std::path::PathBuf) {
-    let cache = std::env::temp_dir().join(format!(
-        "yt-http-smoke-{}-{}",
-        std::process::id(),
-        port
-    ));
+    let cache = std::env::temp_dir().join(format!("yt-http-smoke-{}-{}", std::process::id(), port));
     let child = Command::new(env!("CARGO_BIN_EXE_yt-rust-mcp"))
         .arg("--http")
         .arg("--bind")
@@ -46,7 +42,9 @@ fn wait_health(port: u16, timeout: Duration) {
     loop {
         if let Ok(mut stream) = std::net::TcpStream::connect(("127.0.0.1", port)) {
             let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
-            let req = format!("GET /health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n");
+            let req = format!(
+                "GET /health HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+            );
             if stream.write_all(req.as_bytes()).is_ok() {
                 let mut buf = String::new();
                 let _ = stream.read_to_string(&mut buf);
@@ -89,7 +87,9 @@ fn http_health_and_initialize() {
         let init = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"http-smoke","version":"0"}}}"#;
         let resp = http_post_json(port, "/mcp", init);
         assert!(
-            resp.contains("yt-rust-mcp") || resp.contains("serverInfo") || resp.contains("\"id\":1"),
+            resp.contains("yt-rust-mcp")
+                || resp.contains("serverInfo")
+                || resp.contains("\"id\":1"),
             "unexpected initialize response: {resp}"
         );
     });

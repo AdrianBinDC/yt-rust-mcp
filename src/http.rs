@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use axum::{Router, http::StatusCode, response::IntoResponse, routing::get};
+use axum::{http::StatusCode, response::IntoResponse, routing::get, Router};
 use rmcp::transport::streamable_http_server::{
-    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+    session::local::LocalSessionManager, StreamableHttpServerConfig, StreamableHttpService,
 };
 use tracing::info;
 
@@ -25,10 +25,7 @@ pub fn build_router(server: YoutubeServer) -> Router {
 }
 
 /// Serve Streamable HTTP at `/mcp` plus `GET /health`.
-pub async fn run_http(
-    bind: &str,
-    server: YoutubeServer,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run_http(bind: &str, server: YoutubeServer) -> Result<(), Box<dyn std::error::Error>> {
     let addr: std::net::SocketAddr = bind
         .parse()
         .map_err(|e| format!("invalid bind address '{bind}': {e}"))?;

@@ -10,7 +10,7 @@ use yt_rust_mcp::http::run_http;
 use yt_rust_mcp::server::YoutubeServer;
 use yt_rust_mcp::store::Store;
 use yt_rust_mcp::transcript::execute::build_transcript_http;
-use yt_rust_mcp::transport_opts::{TransportMode, resolve_transport};
+use yt_rust_mcp::transport_opts::{resolve_transport, TransportMode};
 use yt_rust_mcp::youtube::build_http;
 use yt_rust_mcp::youtube_api_key;
 

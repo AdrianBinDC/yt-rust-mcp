@@ -7,8 +7,19 @@ license = "MIT"
 description = "Read-only YouTube Data API v3 MCP server"
 
 [dependencies]
-rmcp = { version = "3.8", features = ["server", "transport-io", "transport-streamable-http-server"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "io-std", "io-util"] }
+rmcp = { version = "3.8", features = [
+  "server",
+  "transport-io",
+  "transport-streamable-http-server",
+] }
+tokio = { version = "1", features = [
+  "macros",
+  "rt-multi-thread",
+  "net",
+  "signal",
+  "io-std",
+  "io-util",
+] }
 reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "rustls-tls",
