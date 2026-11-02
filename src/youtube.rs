@@ -196,7 +196,7 @@ fn allowed_args(method: Method) -> &'static [&'static str] {
 }
 
 pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest, ToolError> {
-    let obj = raw.as_object().cloned().unwrap_or_default();
+    let mut obj = raw.as_object().cloned().unwrap_or_default();
     for name in AUTH_ONLY {
         if obj.contains_key(*name) {
             return Err(ToolError::AuthOnlyParam((*name).to_string()));
@@ -209,11 +209,15 @@ pub fn prepare(method: Method, raw: &Value, hard_cap: u32) -> Result<CallRequest
             "max_pages",
             "page_token",
             "pageToken",
+            "limit",
         ] {
             if obj.contains_key(name) {
                 return Err(ToolError::VideosListPaging(name.to_string()));
             }
         }
+    } else {
+        // Agents often send limit / maxResults; fold into snake_case max_results.
+        normalize_max_results_aliases(&mut obj);
     }
     let allowed = allowed_args(method);
     for name in obj.keys() {
@@ -365,6 +369,18 @@ fn copy_string(
     }
 }
 
+/// Map `limit` / `maxResults` onto `max_results` when the snake_case key is absent.
+fn normalize_max_results_aliases(obj: &mut serde_json::Map<String, Value>) {
+    if obj.contains_key("max_results") {
+        obj.remove("limit");
+        obj.remove("maxResults");
+        return;
+    }
+    if let Some(v) = obj.remove("limit").or_else(|| obj.remove("maxResults")) {
+        obj.insert("max_results".to_string(), v);
+    }
+}
+
 fn copy_aliased_string(
     obj: &serde_json::Map<String, Value>,
     query: &mut BTreeMap<String, String>,
@@ -485,7 +501,7 @@ mod tests {
 
     #[test]
     fn refuses_unknown_and_camel_case_args() {
-        for name in ["playlistId", "maxResults", "nope"] {
+        for name in ["playlistId", "nope"] {
             let raw = json!({"playlist_id": "PL1", name: 1});
             let err = prepare(Method::PlaylistItems, &raw, 5).unwrap_err();
             assert!(matches!(err, ToolError::UnknownParam(ref n) if n == name));
@@ -519,5 +535,17 @@ mod tests {
             Some("25")
         );
         assert_eq!(prepared.max_pages, 1);
+    }
+
+    #[test]
+    fn search_accepts_limit_and_max_results_aliases() {
+        for key in ["limit", "maxResults", "max_results"] {
+            let prepared = prepare(Method::Search, &json!({"q": "rust", key: 5}), 5).unwrap();
+            assert_eq!(
+                prepared.query.get("maxResults").map(String::as_str),
+                Some("5"),
+                "key {key}"
+            );
+        }
     }
 }

@@ -30,7 +30,7 @@ fn roundtrip_tools_list(enable_transcript: bool) -> (String, Vec<String>) {
     ));
     let mut child = bin();
     if enable_transcript {
-        child.env("ENABLE_MCP_TRANSCRIPT", "1");
+        child.env("ENABLE_MCP_TRANSCRIPT", "1"); // overrides the default 0 from bin()
     }
     let mut child = child
         .env("YT_RUST_MCP_CACHE_DIR", &cache)
