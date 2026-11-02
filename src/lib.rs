@@ -1,10 +1,12 @@
 pub mod call;
 pub mod config;
 pub mod error;
+pub mod http;
 pub mod prompts;
 pub mod server;
 pub mod store;
 pub mod transcript;
+pub mod transport_opts;
 pub mod youtube;
 
 /// Default log filter is quiet (`warn`). Hot-path decision lines are `debug!` only.

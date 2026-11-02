@@ -42,6 +42,6 @@ Names mirror the API method and the outcome. Bodies are synthetic.
 | Quota ledger | debit stops at the budget, resets on a new day, and `search` does not change `non_search` |
 | Errors | `quotaExceeded` JSON maps to status and reason; the message does not contain an API key |
 | Tools | refusal still happens after the MCP JSON path; prompt files name the read-only rules |
-| Process | default log filter is `warn`; stdio answers initialize and `tools/list` without calling YouTube |
+| Process | default log filter is `warn`; stdio answers initialize and `tools/list` without calling YouTube; HTTP smoke hits `/health` and initialize on a local bind |
 
 Manual smoke against a real key is **allowed for a human**, outside the test suite (a `cargo run` check). It is **not** a unit test.

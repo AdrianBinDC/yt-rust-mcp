@@ -22,13 +22,27 @@ If startup says `YOUTUBE_API_KEY is not set`, finish steps 4–5 (or export the 
 
 Replace `/ABS/PATH/TO/yt-rust-mcp` with your clone path.
 
+**stdio (dev):**
+
 ```json
 {
   "mcpServers": {
-    "yt-rust-mcp": {
+    "youtube": {
       "command": "cargo",
       "args": ["run", "--release", "--quiet"],
       "cwd": "/ABS/PATH/TO/yt-rust-mcp"
+    }
+  }
+}
+```
+
+**Shared HTTP** (one long-lived server for Cursor + other clients):
+
+```json
+{
+  "mcpServers": {
+    "youtube": {
+      "url": "http://localhost:8087/mcp"
     }
   }
 }
@@ -44,13 +58,24 @@ Optional in an `env` object on that server entry:
 
 ## Other MCP clients
 
-Same idea: run stdio with working directory = repo root.
+**stdio (dev):** working directory = repo root.
 
 - **Command:** `cargo`
 - **Args:** `run --release --quiet`
 - **Working directory:** clone root
 
-Claude Desktop uses its own config file and JSON shape; point it at the same command and directory. Logs stay on stderr; MCP traffic stays on stdout.
+**Shared HTTP:** run one long-lived server and point every client at the same URL:
+
+```text
+http://localhost:8087/mcp
+```
+
+Example: `cargo run --release -- --http --bind 127.0.0.1:8087`  
+Or Docker: `docker run --rm -p 127.0.0.1:8087:8087 --env-file .env yt-rust-mcp:local --http --bind 0.0.0.0:8087`
+
+Use a short server name without hyphens in client config (e.g. `youtube`) so tool names stay simple.
+
+Claude Desktop uses its own config file and JSON shape. Logs stay on stderr; stdio MCP traffic stays on stdout.
 
 ## Optional local Docker
 
@@ -60,12 +85,12 @@ No published image. From the repo root:
 docker build -t yt-rust-mcp:local .
 ```
 
-Use a short-lived stdio container for Cursor (not a long-running compose service). Pass secrets only with `--env-file` — never put `YOUTUBE_API_KEY` in the MCP JSON `env` block or as `-e YOUTUBE_API_KEY=...`. The image runs as non-root; set `--user` to your host `uid:gid` so the cache mount is writable.
+Prefer HTTP (`--http`) for a shared long-lived container. Short-lived stdio containers also work for a single Cursor client; a fixed container name races if two clients start at once. Pass secrets only with `--env-file` — never put `YOUTUBE_API_KEY` in the MCP JSON `env` block or as `-e YOUTUBE_API_KEY=...`. The image runs as non-root; set `--user` to your host `uid:gid` so the cache mount is writable.
 
 ```json
 {
   "mcpServers": {
-    "yt-rust-mcp": {
+    "youtube": {
       "command": "docker",
       "args": [
         "run",

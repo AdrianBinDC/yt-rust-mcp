@@ -24,7 +24,7 @@ If a tool argument requires OAuth or content-owner credentials (`mine`, `forMine
 
 The v1 tools are the catalog methods with `"v1_status": "in_scope"`. Entries marked `"deferred"` are reference, not tools.
 
-Transport target for the MCP: **stdio** first (harness-friendly). HTTP later is out of v1 unless explicitly reopened.
+Transport: **stdio** (default, harness/dev) and **Streamable HTTP** (`/mcp` + `/health`) for a long-lived shared server (Cursor + Hermes on one container).
 
 ## Explicitly out of scope (v1)
 
