@@ -5,7 +5,7 @@ use crate::store::Store;
 use crate::transcript::execute::{execute as transcript_execute, ReqwestTranscript};
 use crate::youtube::{prepare, Method, ReqwestYoutube};
 use jiff::tz::TimeZone;
-use jiff::Zoned;
+use jiff::ZonedDateTime;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
@@ -58,7 +58,7 @@ impl YoutubeServer {
         let request = prepare(method, &args, self.config.max_pages_hard_cap)?;
         let tz =
             TimeZone::get("America/Los_Angeles").map_err(|e| ToolError::Store(e.to_string()))?;
-        let now_zoned = Zoned::now().with_time_zone(tz);
+        let now_zoned = ZonedDateTime::now().with_time_zone(tz);
         let today = now_zoned.date().to_string();
         let now = now_zoned.timestamp().as_second();
         let store = self
@@ -85,7 +85,7 @@ impl YoutubeServer {
         let lang = lang.or_else(|| self.config.transcript_default_lang.clone());
         let tz =
             TimeZone::get("America/Los_Angeles").map_err(|e| ToolError::Store(e.to_string()))?;
-        let now_zoned = Zoned::now().with_time_zone(tz);
+        let now_zoned = ZonedDateTime::now().with_time_zone(tz);
         let today = now_zoned.date().to_string();
         let now = now_zoned.timestamp().as_second();
         let store = self
